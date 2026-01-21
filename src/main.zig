@@ -6,6 +6,8 @@ pub fn main(init: std.process.Init) !void {
     // TODO: Parse args to get filepath
 
     var file = try Io.Dir.cwd().openFile(init.io, "tm.png", .{});
+    defer file.close(init.io);
+
     var buf: [1024]u8 = undefined;
     var reader = file.reader(init.io, &buf);
 
