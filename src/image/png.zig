@@ -25,7 +25,7 @@ pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
     // Check PNG signature
     const signature: u64 = std.mem.nativeToBig(u64, 0x89504E470D0A1A0A);
     if (!std.mem.eql(u8, try reader.peek(8), std.mem.asBytes(&signature))) return PngError.InvalidSignature;
-    reader.take(8);
+    _ = try reader.take(8);
 
     return self;
 }
