@@ -92,9 +92,13 @@ fn parse_chunk(self: *Self) !void {
     const chunklen = try self.reader.takeInt(u32, .big);
     const chunktype: ChunkType = @enumFromInt(try self.reader.takeInt(u32, .big));
 
+    std.log.info("{any}", .{chunktype});
     switch (chunktype) {
         .IHDR => {
             try self.parse_IHDR(chunklen);
+        },
+        .IEND => {
+            _ = try self.reader.takeInt(u32, .big); // Discard CRC
         },
         else => {
             _ = try self.reader.discard(.limited(chunklen));
