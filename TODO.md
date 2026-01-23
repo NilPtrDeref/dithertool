@@ -2,6 +2,7 @@
 
 - [ ] Read PNG into memory in such a way that pixels can efficiently be indexed into or iterated over.
   - [ ] Load image.
+    - [ ] Read each chunk.
   - [ ] Interface.
     - [ ] Iteration.
     - [ ] Indexing.

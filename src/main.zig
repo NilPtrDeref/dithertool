@@ -14,5 +14,5 @@ pub fn main(init: std.process.Init) !void {
     var png = try image.png.parse(init.io, init.gpa, &reader.interface);
     defer png.deinit();
 
-    std.debug.print("Image is {d} x {d}\n", .{ png.width, png.height });
+    std.log.debug("Image is {d} x {d}", .{ png.width, png.height });
 }
