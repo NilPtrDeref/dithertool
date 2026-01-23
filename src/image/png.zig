@@ -4,9 +4,13 @@ const Allocator = std.mem.Allocator;
 
 const PngError = error{
     InvalidSignature,
+    InvalidHeaderLength,
+    InvalidCompressionMethod,
+    InvalidFilterMethod,
 };
 
 const PngSignature: u64 = 0x89504E470D0A1A0A;
+
 const ChunkType = enum(u32) {
     IHDR = 0x49484452,
     PLTE = 0x504C5445,
@@ -36,12 +40,28 @@ const ChunkType = enum(u32) {
     fdAT = 0x66644154,
 };
 
+const ColorType = enum(u8) {
+    Greyscale = 0,
+    Truecolor = 2,
+    Indexed = 3,
+    GreyscaleAlpha = 4,
+    TruecolorAlpha = 6,
+};
+
+const InterlaceMethod = enum(u8) {
+    None = 0,
+    Adam7 = 1,
+};
+
 const Self = @This();
 io: Io,
 gpa: Allocator,
 reader: *Io.Reader,
 width: u32,
 height: u32,
+bitdepth: u8,
+colortype: ColorType,
+interlace: InterlaceMethod,
 
 pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
     var self = try gpa.create(Self);
@@ -53,28 +73,53 @@ pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
     self.height = 0;
 
     // Check PNG signature
-    if (!(PngSignature == try reader.peekInt(u64, .big))) return PngError.InvalidSignature;
+    if (PngSignature != try reader.peekInt(u64, .big)) return PngError.InvalidSignature;
     _ = try reader.takeInt(u64, .big);
 
-    // TODO: Read chunks
     while (true) {
-        const chunklen = reader.takeInt(u32, .big) catch |e| {
+        self.parse_chunk() catch |e| {
             switch (e) {
                 error.EndOfStream => break,
                 else => return e,
             }
         };
-
-        const chunktype: ChunkType = @enumFromInt(try reader.takeInt(u32, .big));
-        _ = chunktype;
-
-        _ = try reader.discard(.limited(chunklen));
-
-        const crc = try reader.takeInt(u32, .big);
-        _ = crc;
     }
 
     return self;
+}
+
+fn parse_chunk(self: *Self) !void {
+    const chunklen = try self.reader.takeInt(u32, .big);
+    const chunktype: ChunkType = @enumFromInt(try self.reader.takeInt(u32, .big));
+
+    switch (chunktype) {
+        .IHDR => {
+            try self.parse_IHDR(chunklen);
+        },
+        else => {
+            _ = try self.reader.discard(.limited(chunklen));
+            const crc = try self.reader.takeInt(u32, .big);
+            _ = crc;
+        },
+    }
+}
+
+fn parse_IHDR(self: *Self, len: u32) !void {
+    if (len != 13) return PngError.InvalidHeaderLength;
+
+    self.width = try self.reader.takeInt(u32, .big);
+    self.height = try self.reader.takeInt(u32, .big);
+
+    // TODO: Validate bitdepth against color type
+    self.bitdepth = try self.reader.takeByte();
+    self.colortype = @enumFromInt(try self.reader.takeByte());
+
+    if (try self.reader.takeByte() != 0) return PngError.InvalidCompressionMethod;
+    if (try self.reader.takeByte() != 0) return PngError.InvalidFilterMethod;
+
+    self.interlace = @enumFromInt(try self.reader.takeByte());
+
+    _ = try self.reader.takeInt(u32, .big); // Discard CRC
 }
 
 pub fn deinit(self: *Self) void {
