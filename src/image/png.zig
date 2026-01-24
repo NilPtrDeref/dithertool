@@ -108,6 +108,7 @@ pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
                 else => return e,
             }
         };
+        std.log.debug("{any}", .{previous});
     }
 
     // TODO: Read data into pixel information and then store.
@@ -131,7 +132,6 @@ fn parse_chunk(self: *Self, previous: ?ChunkType, data: *std.ArrayList(u8)) !Chu
     const chunklen = try self.reader.takeInt(u32, .big);
     const chunktype: ChunkType = @enumFromInt(try self.reader.takeInt(u32, .big));
 
-    std.log.info("{any}", .{chunktype});
     switch (chunktype) {
         _ => return PngError.InvalidChunkType,
         .IHDR => {
