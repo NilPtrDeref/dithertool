@@ -82,6 +82,7 @@ bitdepth: u8,
 colortype: ColorType,
 interlace: InterlaceMethod,
 palette: ?Palette,
+decompressor_buffer: [std.compress.flate.max_window_len]u8,
 
 pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
     var self = try gpa.create(Self);
@@ -206,9 +207,7 @@ fn parse_chunk(self: *Self) !void {
             if (chunklen == 0) return;
 
             var reader: Io.Reader = .fixed(data);
-            // var buffer: [std.compress.flate.max_window_len]u8 = undefined;
-            // var decompressor = std.compress.flate.Decompress.init(&reader, .zlib, &buffer);
-            var decompressor = std.compress.flate.Decompress.init(&reader, .zlib, &.{}); // FIXME: Causes integer overflow
+            var decompressor = std.compress.flate.Decompress.init(&reader, .zlib, &self.decompressor_buffer);
             _ = try decompressor.reader.discardRemaining();
         },
         else => {
