@@ -12,6 +12,7 @@ const PngError = error{
     InvalidFilterMethod,
     InvalidInterlaceMethod,
     InvalidPaletteSize,
+    InvalidCrc,
     TooManyPalettes,
     MissingPalette,
 };
@@ -107,6 +108,13 @@ pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
     return self;
 }
 
+fn valid_crc(chunktype: ChunkType, data: []const u8, crc: u32) bool {
+    var ecrc = std.hash.crc.Crc32.init();
+    ecrc.update(std.mem.asBytes(&std.mem.nativeToBig(u32, @intFromEnum(chunktype))));
+    ecrc.update(data);
+    return crc == ecrc.final();
+}
+
 fn parse_chunk(self: *Self) !void {
     const chunklen = try self.reader.takeInt(u32, .big);
     const chunktype: ChunkType = @enumFromInt(try self.reader.takeInt(u32, .big));
@@ -116,11 +124,17 @@ fn parse_chunk(self: *Self) !void {
         _ => return PngError.InvalidChunkType,
         .IHDR => {
             if (chunklen != 13) return PngError.InvalidHeaderLength;
-            self.width = try self.reader.takeInt(u32, .big);
-            self.height = try self.reader.takeInt(u32, .big);
 
-            self.bitdepth = try self.reader.takeByte();
-            self.colortype = @enumFromInt(try self.reader.takeByte());
+            const data = try self.reader.readAlloc(self.gpa, chunklen);
+            defer self.gpa.free(data);
+            if (!valid_crc(.IHDR, data, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
+            var reader: Io.Reader = .fixed(data);
+
+            self.width = try reader.takeInt(u32, .big);
+            self.height = try reader.takeInt(u32, .big);
+
+            self.bitdepth = try reader.takeByte();
+            self.colortype = @enumFromInt(try reader.takeByte());
             switch (self.colortype) {
                 .Greyscale => switch (self.bitdepth) {
                     1, 2, 4, 8, 16 => {},
@@ -145,18 +159,16 @@ fn parse_chunk(self: *Self) !void {
                 _ => return PngError.InvalidColorType,
             }
 
-            if (try self.reader.takeByte() != 0) return PngError.InvalidCompressionMethod;
-            if (try self.reader.takeByte() != 0) return PngError.InvalidFilterMethod;
-            self.interlace = @enumFromInt(try self.reader.takeByte());
+            if (try reader.takeByte() != 0) return PngError.InvalidCompressionMethod;
+            if (try reader.takeByte() != 0) return PngError.InvalidFilterMethod;
+            self.interlace = @enumFromInt(try reader.takeByte());
             switch (self.interlace) {
                 _ => return PngError.InvalidInterlaceMethod,
                 else => {},
             }
-
-            _ = try self.reader.takeInt(u32, .big); // Discard CRC
         },
         .IEND => {
-            _ = try self.reader.takeInt(u32, .big); // Discard CRC
+            if (!valid_crc(.IEND, &.{}, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
         },
         .PLTE => {
             if (self.palette != null) return PngError.TooManyPalettes;
@@ -172,17 +184,26 @@ fn parse_chunk(self: *Self) !void {
             }
             if (chunklen == 0 or @mod(chunklen, 3) != 0) return PngError.InvalidPaletteSize;
 
+            const data = try self.reader.readAlloc(self.gpa, chunklen);
+            defer self.gpa.free(data);
+            if (!valid_crc(.PLTE, &.{}, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
+            var reader: Io.Reader = .fixed(data);
+
             self.palette = try .initCapacity(self.gpa, palettesize);
             for (0..palettesize) |_| {
                 self.palette.?.appendAssumeCapacity(.{
-                    .r = try self.reader.takeByte(),
-                    .g = try self.reader.takeByte(),
-                    .b = try self.reader.takeByte(),
+                    .r = try reader.takeByte(),
+                    .g = try reader.takeByte(),
+                    .b = try reader.takeByte(),
                 });
             }
-            _ = try self.reader.takeInt(u32, .big); // Discard CRC
         },
         .IDAT => {
+            const data = try self.reader.readAlloc(self.gpa, chunklen);
+            defer self.gpa.free(data);
+            if (!valid_crc(.IDAT, data, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
+            // var reader: Io.Reader = .fixed(data);
+
             // TODO: Interpret data and create color buffer. Convert data to rgba buffer?
             unreachable;
         },
