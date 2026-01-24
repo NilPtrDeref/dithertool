@@ -18,13 +18,18 @@
 
     - [ ] Webp
 
+    - [ ] PPM
+
 - [ ] Output Formats
   - [ ] Image
     - [ ] PNG
+    - [ ] PPM
 
-- [ ] Dithering
-  - [ ] Floyd-Steinberg
-  - [ ] ...
+- [ ] Editting
+  - [ ] Pixel Sort
+  - [ ] Dithering
+    - [ ] Floyd-Steinberg
+    - [ ] ...
 
 - [ ] User Interface (Using Raylib?)
   - [ ] Load image
