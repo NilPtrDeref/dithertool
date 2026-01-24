@@ -182,6 +182,10 @@ fn parse_chunk(self: *Self) !void {
             }
             _ = try self.reader.takeInt(u32, .big); // Discard CRC
         },
+        .IDAT => {
+            // TODO: Interpret data and create color buffer. Convert data to rgba buffer?
+            unreachable;
+        },
         else => {
             _ = try self.reader.discard(.limited(chunklen));
             _ = try self.reader.takeInt(u32, .big);
