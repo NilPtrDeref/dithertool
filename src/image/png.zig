@@ -105,6 +105,7 @@ pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
         };
     }
 
+    if (self.colortype == .Indexed and self.palette == null) return PngError.MissingPalette;
     return self;
 }
 
@@ -202,18 +203,19 @@ fn parse_chunk(self: *Self) !void {
             const data = try self.reader.readAlloc(self.gpa, chunklen);
             defer self.gpa.free(data);
             if (!valid_crc(.IDAT, data, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
-            // var reader: Io.Reader = .fixed(data);
+            if (chunklen == 0) return;
 
-            // TODO: Interpret data and create color buffer. Convert data to rgba buffer?
-            unreachable;
+            var reader: Io.Reader = .fixed(data);
+            // var buffer: [std.compress.flate.max_window_len]u8 = undefined;
+            // var decompressor = std.compress.flate.Decompress.init(&reader, .zlib, &buffer);
+            var decompressor = std.compress.flate.Decompress.init(&reader, .zlib, &.{}); // FIXME: Causes integer overflow
+            _ = try decompressor.reader.discardRemaining();
         },
         else => {
             _ = try self.reader.discard(.limited(chunklen));
             _ = try self.reader.takeInt(u32, .big);
         },
     }
-
-    if (self.colortype == .Indexed and self.palette == null) return PngError.MissingPalette;
 }
 
 pub fn deinit(self: *Self) void {
