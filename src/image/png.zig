@@ -13,7 +13,9 @@ const PngError = error{
     InvalidInterlaceMethod,
     InvalidPaletteSize,
     InvalidCrc,
-    TooManyPalettes,
+    InvalidChunkSequence,
+    DuplicateHeader,
+    DuplicatePalettes,
     MissingPalette,
 };
 
@@ -82,7 +84,6 @@ bitdepth: u8,
 colortype: ColorType,
 interlace: InterlaceMethod,
 palette: ?Palette,
-decompressor_buffer: [std.compress.flate.max_window_len]u8,
 
 pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
     var self = try gpa.create(Self);
@@ -97,14 +98,23 @@ pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
     if (PngSignature != try reader.peekInt(u64, .big)) return PngError.InvalidSignature;
     _ = try reader.takeInt(u64, .big);
 
+    var previous: ?ChunkType = null;
+    var data: std.ArrayList(u8) = .empty;
+    defer data.deinit(self.gpa);
     while (true) {
-        self.parse_chunk() catch |e| {
+        previous = self.parse_chunk(previous, &data) catch |e| {
             switch (e) {
                 error.EndOfStream => break,
                 else => return e,
             }
         };
     }
+
+    // TODO: Read data into pixel information and then store.
+    var dreader: Io.Reader = .fixed(data.items);
+    var buffer: [std.compress.flate.max_window_len]u8 = undefined;
+    var decompressor = std.compress.flate.Decompress.init(&dreader, .zlib, &buffer);
+    _ = try decompressor.reader.discardRemaining();
 
     if (self.colortype == .Indexed and self.palette == null) return PngError.MissingPalette;
     return self;
@@ -117,7 +127,7 @@ fn valid_crc(chunktype: ChunkType, data: []const u8, crc: u32) bool {
     return crc == ecrc.final();
 }
 
-fn parse_chunk(self: *Self) !void {
+fn parse_chunk(self: *Self, previous: ?ChunkType, data: *std.ArrayList(u8)) !ChunkType {
     const chunklen = try self.reader.takeInt(u32, .big);
     const chunktype: ChunkType = @enumFromInt(try self.reader.takeInt(u32, .big));
 
@@ -125,12 +135,13 @@ fn parse_chunk(self: *Self) !void {
     switch (chunktype) {
         _ => return PngError.InvalidChunkType,
         .IHDR => {
+            if (previous != null) return PngError.DuplicateHeader;
             if (chunklen != 13) return PngError.InvalidHeaderLength;
 
-            const data = try self.reader.readAlloc(self.gpa, chunklen);
-            defer self.gpa.free(data);
-            if (!valid_crc(.IHDR, data, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
-            var reader: Io.Reader = .fixed(data);
+            const chunk = try self.reader.readAlloc(self.gpa, chunklen);
+            defer self.gpa.free(chunk);
+            if (!valid_crc(.IHDR, chunk, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
+            var reader: Io.Reader = .fixed(chunk);
 
             self.width = try reader.takeInt(u32, .big);
             self.height = try reader.takeInt(u32, .big);
@@ -173,7 +184,7 @@ fn parse_chunk(self: *Self) !void {
             if (!valid_crc(.IEND, &.{}, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
         },
         .PLTE => {
-            if (self.palette != null) return PngError.TooManyPalettes;
+            if (self.palette != null) return PngError.DuplicatePalettes;
             const palettesize = chunklen / 3;
             switch (self.colortype) {
                 .Indexed => {
@@ -182,14 +193,14 @@ fn parse_chunk(self: *Self) !void {
                 .Truecolor, .TruecolorAlpha => {
                     if (palettesize > 256) return PngError.InvalidPaletteSize;
                 },
-                else => return PngError.TooManyPalettes,
+                else => return PngError.DuplicatePalettes,
             }
             if (chunklen == 0 or @mod(chunklen, 3) != 0) return PngError.InvalidPaletteSize;
 
-            const data = try self.reader.readAlloc(self.gpa, chunklen);
-            defer self.gpa.free(data);
+            const chunk = try self.reader.readAlloc(self.gpa, chunklen);
+            defer self.gpa.free(chunk);
             if (!valid_crc(.PLTE, &.{}, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
-            var reader: Io.Reader = .fixed(data);
+            var reader: Io.Reader = .fixed(chunk);
 
             self.palette = try .initCapacity(self.gpa, palettesize);
             for (0..palettesize) |_| {
@@ -201,20 +212,24 @@ fn parse_chunk(self: *Self) !void {
             }
         },
         .IDAT => {
-            const data = try self.reader.readAlloc(self.gpa, chunklen);
-            defer self.gpa.free(data);
-            if (!valid_crc(.IDAT, data, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
-            if (chunklen == 0) return;
+            const prelen = data.items.len;
+            if (prelen > 0 and previous != .IDAT) return PngError.InvalidChunkSequence;
 
-            var reader: Io.Reader = .fixed(data);
-            var decompressor = std.compress.flate.Decompress.init(&reader, .zlib, &self.decompressor_buffer);
-            _ = try decompressor.reader.discardRemaining();
+            self.reader.appendRemaining(self.gpa, data, .limited(chunklen)) catch |e| {
+                switch (e) {
+                    error.StreamTooLong => {},
+                    else => return e,
+                }
+            };
+            if (!valid_crc(.IDAT, data.items[prelen..], try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
         },
         else => {
             _ = try self.reader.discard(.limited(chunklen));
             _ = try self.reader.takeInt(u32, .big);
         },
     }
+
+    return chunktype;
 }
 
 pub fn deinit(self: *Self) void {
