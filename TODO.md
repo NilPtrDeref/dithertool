@@ -1,14 +1,43 @@
 # TODO
 
-- [ ] Read PNG into memory in such a way that pixels can efficiently be indexed into or iterated over.
-  - [ ] Load image.
-    - [ ] Read each chunk.
-  - [ ] Interface.
-    - [ ] Iteration.
-    - [ ] Indexing.
-    - [ ] Clone.
-    - [ ] Set pixel.
-    - [ ] Resize?
-  - [ ] Encode image interface to writer as PNG.
-- [ ] Implement basic dither functionality on in memory image.
-- [ ] Build interface to load/present image and dither it live, allowing the user to change settings and see changes immediately. (Using Raylib?)
+- [ ] Create standard image memory format
+  - [ ] Indexable
+  - [ ] Iterable
+  - [ ] Copyable?
+  - [ ] Editable?
+  - [ ] Resizable?
+
+- [ ] Input Formats
+  - [ ] Image
+    - [ ] PNG
+      - [x] Read critical chunk types
+      - [ ] Interpret data to get pixel information
+      - [ ] Interface conversion/wrapping
+
+    - [ ] Jpg/Jpeg
+
+    - [ ] Webp
+
+- [ ] Output Formats
+  - [ ] Image
+    - [ ] PNG
+
+- [ ] Dithering
+  - [ ] Floyd-Steinberg
+  - [ ] ...
+
+- [ ] User Interface (Using Raylib?)
+  - [ ] Load image
+  - [ ] Present image
+  - [ ] Menu
+  - [ ] Live dither image
+
+## Future Development
+
+- [ ] PNG Input
+  - [ ] Ancillary Chunk Type Ingestion
+
+- [ ] Video
+  - [ ] Mp4
+  - [ ] Webm
+  - [ ] Gif?
