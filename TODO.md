@@ -27,7 +27,8 @@
     - [ ] Floyd-Steinberg
     - [ ] ...
 
-- [ ] User Interface (Using Raylib?)
+- [ ] User Interface (Using OpenGL)
+  - [x] Open Window
   - [ ] Load image
   - [ ] Present image
   - [ ] Menu
