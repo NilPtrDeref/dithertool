@@ -1,11 +1,7 @@
 # TODO
 
-- [ ] Create standard image memory format
-  - [ ] Indexable
-  - [ ] Iterable
-  - [ ] Copyable?
-  - [ ] Editable?
-  - [ ] Resizable?
+- [x] Create standard image memory format
+  - [x] Indexable
 
 - [ ] Input Formats
   - [ ] Image
@@ -38,6 +34,12 @@
   - [ ] Live dither image
 
 ## Future Development
+
+- [x] Upgrade standard image format
+  - [ ] Iterable
+  - [ ] Copyable
+  - [ ] Editable
+  - [ ] Resizable
 
 - [ ] PNG Input
   - [ ] Ancillary Chunk Type Ingestion
