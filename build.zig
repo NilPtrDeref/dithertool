@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) void {
     const image = b.createModule(.{
         .target = target,
         .optimize = optimize,
-        .root_source_file = b.path("src/Image/Image.zig"),
+        .root_source_file = b.path("src/image/Image.zig"),
     });
 
     const exe = b.addExecutable(.{
