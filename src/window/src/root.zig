@@ -6,6 +6,14 @@ const glfw = @cImport({
     @cInclude("GLFW/glfw3.h");
 });
 
+/// Accepts rgba as ranges from 0-255
+pub const Color = struct {
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32,
+};
+
 const Window = @This();
 gpa: Allocator,
 window: *glfw.GLFWwindow,
@@ -70,7 +78,8 @@ pub fn ShouldClose(window: *Window) bool {
     return glfw.glfwWindowShouldClose(window.window) == glfw.GLFW_TRUE;
 }
 
-pub fn Clear(_: *Window) void {
+pub fn Clear(_: *Window, color: Color) void {
+    gl.ClearColor(color.r / 255.0, color.g / 255.0, color.b / 255.0, color.a / 255.0);
     gl.Clear(gl.COLOR_BUFFER_BIT);
 }
 

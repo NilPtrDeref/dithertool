@@ -3,6 +3,8 @@ const Io = std.Io;
 const Image = @import("image");
 const Window = @import("window");
 
+const background: Window.Color = .{ .r = 0x18, .g = 0x18, .b = 0x18, .a = 0x18 };
+
 pub fn main(init: std.process.Init) !void {
     var file = try Io.Dir.cwd().openFile(init.io, "tm.png", .{});
     defer file.close(init.io);
@@ -17,7 +19,7 @@ pub fn main(init: std.process.Init) !void {
     var w = try Window.init(init.gpa, 800, 640, "Dithertool");
     defer w.deinit();
     while (!w.ShouldClose()) {
-        w.Clear();
+        w.Clear(background);
         w.SwapBuffers();
     }
 }
