@@ -18,5 +18,4 @@ pub fn build(b: *std.Build) void {
     });
     window.addImport("gl", gl_bindings);
     window.linkSystemLibrary("glfw", .{});
-    window.linkSystemLibrary("GL", .{});
 }
