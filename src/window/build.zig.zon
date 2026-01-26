@@ -1,6 +1,12 @@
 .{
     .name = .window,
     .version = "0.0.1",
+    .dependencies = .{
+        .zigglgen = .{
+            .url = "git+https://github.com/castholm/zigglgen.git#6b21369ac50de8826f8af60a7edb33693b4ec7bf",
+            .hash = "zigglgen-0.5.0-zigglr_CLwBs1aABtYVtxNPo1SB8AzgKMVouoqULqkDQ",
+        },
+    },
     .minimum_zig_version = "0.16.0-dev.2318+f186809ca",
     .paths = .{
         "build.zig",

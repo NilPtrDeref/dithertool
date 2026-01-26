@@ -1,6 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const gl = @cImport(@cInclude("glad/gl.h"));
+const gl = @import("gl");
 const glfw = @cImport({
     @cDefine("GLFW_INCLUDE_NONE", "1");
     @cInclude("GLFW/glfw3.h");
@@ -9,6 +9,7 @@ const glfw = @cImport({
 const Window = @This();
 gpa: Allocator,
 window: *glfw.GLFWwindow,
+procs: gl.ProcTable,
 
 /// It is undefined behavior to create more that a single Window.
 pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:0]const u8) !*Window {
@@ -29,7 +30,11 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     glfw.glfwSwapInterval(1);
     glfw.glfwSetWindowUserPointer(window.window, window);
 
-    if (gl.gladLoadGL(glfw.glfwGetProcAddress) == 0) return error.GladLoadError;
+    // Initialize the procedure table.
+    if (!window.procs.init(glfw.glfwGetProcAddress)) return error.InitFailed;
+
+    // Make the procedure table current on the calling thread.
+    gl.makeProcTableCurrent(&window.procs);
 
     // TODO: Register Callbacks for:
     // * Window Position
@@ -47,6 +52,7 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
 }
 
 pub fn deinit(window: *Window) void {
+    gl.makeProcTableCurrent(null);
     glfw.glfwDestroyWindow(window.window);
     glfw.glfwTerminate();
     window.gpa.destroy(window);
@@ -57,7 +63,7 @@ pub fn ShouldClose(window: *Window) bool {
 }
 
 pub fn Clear(_: *Window) void {
-    gl.glClear(gl.GL_COLOR_BUFFER_BIT);
+    gl.Clear(gl.COLOR_BUFFER_BIT);
 }
 
 pub fn SwapBuffers(window: *Window) void {
