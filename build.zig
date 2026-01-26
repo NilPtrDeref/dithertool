@@ -3,11 +3,8 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const image = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .root_source_file = b.path("src/image/Image.zig"),
-    });
+    const image = b.dependency("image", .{}).module("image");
+    const window = b.dependency("window", .{}).module("window");
 
     const exe = b.addExecutable(.{
         .name = "dithertool",
@@ -15,11 +12,10 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = &.{
-                .{ .name = "image", .module = image },
-            },
         }),
     });
+    exe.root_module.addImport("image", image);
+    exe.root_module.addImport("window", window);
     b.installArtifact(exe);
 
     const run_step = b.step("run", "Run the app");

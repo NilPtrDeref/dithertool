@@ -1,6 +1,8 @@
 const std = @import("std");
 const Io = std.Io;
 const image = @import("image");
+const glfw = @cImport(@cInclude("GLFW/glfw3.h"));
+const gl = @cImport(@cInclude("GL/gl.h"));
 
 pub fn main(init: std.process.Init) !void {
     // TODO: Parse args to get filepath

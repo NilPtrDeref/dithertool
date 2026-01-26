@@ -1,0 +1,11 @@
+.{
+    .name = .window,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.16.0-dev.2318+f186809ca",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+    .fingerprint = 0x8be4f9dd7068d7a2,
+}
