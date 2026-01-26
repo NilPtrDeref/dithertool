@@ -90,6 +90,8 @@ pub fn WindowPosFun(w: ?*glfw.GLFWwindow, xpos: c_int, ypos: c_int) callconv(.c)
 
 pub fn WindowSizeFun(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+    // TODO: Decide if this is the user's responsibility
+    gl.Viewport(0, 0, width, height);
     _ = .{ window, width, height };
 }
 
