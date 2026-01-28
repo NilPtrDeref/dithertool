@@ -1,8 +1,8 @@
 const std = @import("std");
 const Io = std.Io;
 const Image = @import("image");
-const window = @import("window");
-const Window = window.Window;
+const ui = @import("ui");
+const Window = ui.Window;
 
 const background: Window.Color = .{ .r = 0x3F, .g = 0x3F, .b = 0x3F, .a = 0xFF };
 

@@ -10,12 +10,12 @@ pub fn build(b: *std.Build) void {
         .profile = .core,
     });
 
-    const window = b.addModule("window", .{
+    const ui = b.addModule("ui", .{
         .target = target,
         .optimize = optimize,
         .root_source_file = b.path("src/root.zig"),
         .link_libc = true,
     });
-    window.addImport("gl", gl_bindings);
-    window.linkSystemLibrary("glfw", .{});
+    ui.addImport("gl", gl_bindings);
+    ui.linkSystemLibrary("glfw", .{});
 }

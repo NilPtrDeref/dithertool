@@ -7,8 +7,8 @@
         .image = .{
             .path = "src/image",
         },
-        .window = .{
-            .path = "src/window",
+        .ui = .{
+            .path = "src/ui",
         },
     },
     .paths = .{

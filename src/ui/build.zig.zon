@@ -1,5 +1,5 @@
 .{
-    .name = .window,
+    .name = .ui,
     .version = "0.0.1",
     .dependencies = .{
         .zigglgen = .{
@@ -13,5 +13,5 @@
         "build.zig.zon",
         "src",
     },
-    .fingerprint = 0x8be4f9dd7068d7a2,
+    .fingerprint = 0x27ff46b0e26785fc,
 }

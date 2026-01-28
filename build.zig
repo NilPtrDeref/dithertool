@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const image = b.dependency("image", .{}).module("image");
-    const window = b.dependency("window", .{}).module("window");
+    const ui = b.dependency("ui", .{}).module("ui");
 
     const exe = b.addExecutable(.{
         .name = "dithertool",
@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     exe.root_module.addImport("image", image);
-    exe.root_module.addImport("window", window);
+    exe.root_module.addImport("ui", ui);
     b.installArtifact(exe);
 
     const run_step = b.step("run", "Run the app");
