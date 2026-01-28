@@ -10,6 +10,7 @@ const PngError = error{
     InvalidBitDepth,
     InvalidCompressionMethod,
     InvalidFilterMethod,
+    UnsupportedInterlaceMethod,
     InvalidInterlaceMethod,
     InvalidPaletteSize,
     InvalidCrc,
@@ -175,6 +176,7 @@ fn parse_chunk(self: *Self, previous: ?ChunkType, data: *std.ArrayList(u8)) !Chu
             if (try reader.takeByte() != 0) return PngError.InvalidFilterMethod;
             self.interlace = @enumFromInt(try reader.takeByte());
             switch (self.interlace) {
+                .Adam7 => return PngError.UnsupportedInterlaceMethod, // FIXME: Add support for this interlace method
                 _ => return PngError.InvalidInterlaceMethod,
                 else => {},
             }
