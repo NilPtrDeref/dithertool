@@ -13,11 +13,18 @@ const Texture = @This();
 tid: u32,
 tunit: u32,
 
+// TODO: Take in options struct for things like texture type, TexParameter, etc.
 pub fn init(width: i32, height: i32, data: []const u8) Texture {
     var tid: u32 = undefined;
     gl.GenTextures(1, @ptrCast(&tid));
     gl.ActiveTexture(CurrentTexture);
     gl.BindTexture(glfw.GL_TEXTURE_2D, tid);
+
+    // TODO: Determine if wrap needs to be set
+    // gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MIN_FILTER, glfw.GL_LINEAR);
+    gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MAG_FILTER, glfw.GL_LINEAR);
+
     gl.TexImage2D(glfw.GL_TEXTURE_2D, 0, glfw.GL_RGBA, width, height, 0, glfw.GL_RGBA, glfw.GL_UNSIGNED_BYTE, data.ptr);
 
     const texture: Texture = .{
