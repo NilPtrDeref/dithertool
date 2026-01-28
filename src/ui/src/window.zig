@@ -7,6 +7,11 @@ const glfw = @cImport({
 const buffer = @import("buffer.zig");
 const Array = buffer.Array;
 const Buffer = buffer.Buffer;
+const shader = @import("shader.zig");
+const Program = shader.Program;
+
+const TEXTURE_VERTEX_SOURCE = @embedFile("shaders/texture.vert");
+const TEXTURE_FRAGMENT_SOURCE = @embedFile("shaders/texture.frag");
 
 // TODO: Find a better place for this?
 /// Accepts rgba as ranges from 0-255
@@ -24,7 +29,7 @@ procs: gl.ProcTable,
 
 texture_array: *Array,
 texture_buffer: Buffer,
-// texture_program: Program,
+texture_program: Program,
 
 /// It is undefined behavior to create more that a single Window.
 pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:0]const u8) !*Window {
@@ -86,10 +91,18 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     window.texture_buffer.attrib_ptr(1, 2, 4 * @sizeOf(f32), 2);
     Buffer.unbind();
 
+    var tvp = try shader.Shader.init(.Vertex, std.mem.span(@as([*c]const u8, @ptrCast(TEXTURE_VERTEX_SOURCE))));
+    defer tvp.deinit();
+    var tfp = try shader.Shader.init(.Fragment, std.mem.span(@as([*c]const u8, @ptrCast(TEXTURE_FRAGMENT_SOURCE))));
+    defer tfp.deinit();
+
+    window.texture_program = try Program.init(tvp, tfp);
+
     return window;
 }
 
 pub fn deinit(window: *Window) void {
+    window.texture_program.deinit();
     window.texture_array.deinit();
     gl.makeProcTableCurrent(null);
     glfw.glfwDestroyWindow(window.window);
