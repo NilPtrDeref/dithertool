@@ -89,7 +89,7 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
         1.0,  1.0,  1.0, 1.0,
     }, .StaticDraw);
     window.texture_buffer.attrib_ptr(0, 2, 4 * @sizeOf(f32), 0);
-    window.texture_buffer.attrib_ptr(1, 2, 4 * @sizeOf(f32), 2);
+    window.texture_buffer.attrib_ptr(1, 2, 4 * @sizeOf(f32), 2 * @sizeOf(f32));
     Buffer.unbind();
 
     var tvp = try shader.Shader.init(.Vertex, std.mem.span(@as([*c]const u8, @ptrCast(TEXTURE_VERTEX_SOURCE))));
