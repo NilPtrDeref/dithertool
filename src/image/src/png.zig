@@ -108,7 +108,6 @@ pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
                 else => return e,
             }
         };
-        std.log.debug("{any}", .{previous});
     }
 
     // TODO: Read data into pixel information and then store.
