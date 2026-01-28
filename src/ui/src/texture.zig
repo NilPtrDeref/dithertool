@@ -24,6 +24,9 @@ pub fn init(width: i32, height: i32, data: []const u8) Texture {
 
     // TODO: Determine if wrap needs to be set
     // gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_WRAP_S, glfw.GL_REPEAT);
+
+    // gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MIN_FILTER, glfw.GL_LINEAR);
+    // gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MAG_FILTER, glfw.GL_LINEAR);
     gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MIN_FILTER, glfw.GL_NEAREST);
     gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MAG_FILTER, glfw.GL_NEAREST);
 
