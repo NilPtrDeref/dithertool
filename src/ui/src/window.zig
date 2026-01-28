@@ -4,6 +4,9 @@ const gl = @import("gl");
 const glfw = @cImport({
     @cInclude("GLFW/glfw3.h");
 });
+const buffer = @import("buffer.zig");
+const Array = buffer.Array;
+const Buffer = buffer.Buffer;
 
 // TODO: Find a better place for this?
 /// Accepts rgba as ranges from 0-255
@@ -18,6 +21,10 @@ const Window = @This();
 gpa: Allocator,
 window: *glfw.GLFWwindow,
 procs: gl.ProcTable,
+
+texture_array: *Array,
+texture_buffer: Buffer,
+// texture_program: Program,
 
 /// It is undefined behavior to create more that a single Window.
 pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:0]const u8) !*Window {
@@ -64,10 +71,26 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     gl.makeProcTableCurrent(&window.procs);
     gl.Viewport(0, 0, width, height);
 
+    // Set up VertexArray and VertexBuffer for drawing textures.
+    window.texture_array = try Array.init(gpa);
+    window.texture_buffer = try window.texture_array.buffer();
+    window.texture_buffer.set(&.{
+        -1.0, 1.0,  0.0, 1.0,
+        -1.0, -1.0, 0.0, 0.0,
+        1.0,  -1.0, 1.0, 0.0,
+        -1.0, 1.0,  0.0, 1.0,
+        1.0,  -1.0, 1.0, 0.0,
+        1.0,  1.0,  1.0, 1.0,
+    }, .StaticDraw);
+    window.texture_buffer.attrib_ptr(0, 2, 4 * @sizeOf(f32), 0);
+    window.texture_buffer.attrib_ptr(1, 2, 4 * @sizeOf(f32), 2);
+    Buffer.unbind();
+
     return window;
 }
 
 pub fn deinit(window: *Window) void {
+    window.texture_array.deinit();
     gl.makeProcTableCurrent(null);
     glfw.glfwDestroyWindow(window.window);
     glfw.glfwTerminate();
@@ -87,6 +110,8 @@ pub fn SwapBuffers(window: *Window) void {
     glfw.glfwSwapBuffers(window.window);
     glfw.glfwPollEvents();
 }
+
+// TODO: DrawTexture
 
 pub fn ErrorFun(error_code: c_int, description: [*c]const u8) callconv(.c) void {
     std.log.err("Error ({d}): {s}\n", .{ error_code, std.mem.span(description) });
