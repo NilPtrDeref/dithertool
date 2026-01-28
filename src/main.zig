@@ -16,13 +16,18 @@ pub fn main(init: std.process.Init) !void {
 
     var png = try Image.png.parse(init.io, init.gpa, &reader.interface);
     defer png.deinit();
-    std.log.debug("Image is {d} x {d}", .{ png.width, png.height });
+    std.log.debug("Image is {d} x {d} :: {any}", .{ png.width, png.height, png.colortype });
 
     var w = try Window.init(init.gpa, 800, 640, "Dithertool");
     defer w.deinit();
 
-    const tdata: []const u8 = &.{ 0, 255, 0, 255 }; // RGBA
-    var texture = Texture.init(1, 1, tdata);
+    const tdata: []const u8 = &.{
+        0,   255, 0,   255,
+        255, 0,   0,   255,
+        0,   0,   255, 255,
+        255, 255, 255, 255,
+    };
+    var texture = Texture.init(2, 2, tdata);
     defer texture.deinit();
 
     while (!w.ShouldClose()) {
