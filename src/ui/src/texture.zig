@@ -28,10 +28,19 @@ pub fn init(width: i32, height: i32, data: []const u8) Texture {
     gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MAG_FILTER, glfw.GL_LINEAR);
 
     gl.TexImage2D(glfw.GL_TEXTURE_2D, 0, glfw.GL_RGBA, width, height, 0, glfw.GL_RGBA, glfw.GL_UNSIGNED_BYTE, data.ptr);
+    gl.GenerateMipmap(glfw.GL_TEXTURE_2D);
 
     return texture;
 }
 
 pub fn deinit(texture: Texture) void {
     gl.DeleteTextures(1, @ptrCast(&texture.tid));
+}
+
+pub fn set_active(texture: Texture) void {
+    gl.ActiveTexture(texture.tunit);
+}
+
+pub fn bind(texture: Texture) void {
+    gl.BindTexture(glfw.GL_TEXTURE_2D, texture.tid);
 }

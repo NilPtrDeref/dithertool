@@ -9,6 +9,7 @@ const Array = buffer.Array;
 const Buffer = buffer.Buffer;
 const shader = @import("shader.zig");
 const Program = shader.Program;
+const Texture = @import("texture.zig");
 
 const TEXTURE_VERTEX_SOURCE = @embedFile("shaders/texture.vert");
 const TEXTURE_FRAGMENT_SOURCE = @embedFile("shaders/texture.frag");
@@ -124,7 +125,21 @@ pub fn SwapBuffers(window: *Window) void {
     glfw.glfwPollEvents();
 }
 
-// TODO: DrawTexture
+// TODO: Expand to take src/dest rectangles.
+pub fn DrawTexture(window: Window, texture: Texture) void {
+    window.texture_program.use();
+    window.texture_buffer.bind();
+    texture.set_active();
+    texture.bind();
+
+    // TODO: Move into program?
+    gl.Uniform1i(gl.GetUniformLocation(window.texture_program.pid, "uTexture"), @intCast(texture.tunit));
+
+    // TODO: Move into Array?
+    gl.BindVertexArray(window.texture_array.vao);
+
+    gl.DrawArrays(glfw.GL_TRIANGLES, 0, 6);
+}
 
 pub fn ErrorFun(error_code: c_int, description: [*c]const u8) callconv(.c) void {
     std.log.err("Error ({d}): {s}\n", .{ error_code, std.mem.span(description) });

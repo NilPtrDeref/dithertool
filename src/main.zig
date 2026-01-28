@@ -21,12 +21,13 @@ pub fn main(init: std.process.Init) !void {
     var w = try Window.init(init.gpa, 800, 640, "Dithertool");
     defer w.deinit();
 
-    const tdata: []const u8 = &.{ 255, 255, 255, 255 };
+    const tdata: []const u8 = &.{ 0, 255, 0, 255 }; // RGBA
     var texture = Texture.init(1, 1, tdata);
     defer texture.deinit();
 
     while (!w.ShouldClose()) {
         w.Clear(background);
+        w.DrawTexture(texture);
         w.SwapBuffers();
     }
 }
