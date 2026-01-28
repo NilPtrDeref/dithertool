@@ -23,9 +23,9 @@ pub fn init(width: i32, height: i32, data: []const u8) Texture {
     gl.BindTexture(glfw.GL_TEXTURE_2D, texture.tid);
 
     // TODO: Determine if wrap needs to be set
-    // gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MIN_FILTER, glfw.GL_LINEAR);
-    gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MAG_FILTER, glfw.GL_LINEAR);
+    // gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_WRAP_S, glfw.GL_REPEAT);
+    gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MIN_FILTER, glfw.GL_NEAREST);
+    gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MAG_FILTER, glfw.GL_NEAREST);
 
     gl.TexImage2D(glfw.GL_TEXTURE_2D, 0, glfw.GL_RGBA, width, height, 0, glfw.GL_RGBA, glfw.GL_UNSIGNED_BYTE, data.ptr);
     gl.GenerateMipmap(glfw.GL_TEXTURE_2D);
