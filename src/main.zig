@@ -1,9 +1,10 @@
 const std = @import("std");
 const Io = std.Io;
 const Image = @import("image");
-const Window = @import("window");
+const window = @import("window");
+const Window = window.Window;
 
-const background: Window.Color = .{ .r = 0x18, .g = 0x18, .b = 0x18, .a = 0x18 };
+const background: Window.Color = .{ .r = 0x3F, .g = 0x3F, .b = 0x3F, .a = 0xFF };
 
 pub fn main(init: std.process.Init) !void {
     var file = try Io.Dir.cwd().openFile(init.io, "tm.png", .{});
