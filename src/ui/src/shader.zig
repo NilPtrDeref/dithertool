@@ -42,7 +42,7 @@ pub const Shader = struct {
 
     const ShaderType = enum(u32) {
         Vertex = glfw.GL_VERTEX_SHADER,
-        Geometry = glfw.GL_GEMOMETRY_SHADER,
+        Geometry = glfw.GL_GEOMETRY_SHADER,
         Fragment = glfw.GL_FRAGMENT_SHADER,
     };
 

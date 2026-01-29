@@ -142,9 +142,6 @@ fn valid_crc(chunktype: ChunkType, data: []const u8, crc: u32) bool {
     return crc == ecrc.final();
 }
 
-// TODO: Clean up this function:
-// 1. Too many params, feels chunky.
-// 2. Reader for header/palette could easily be confused for input reader.
 fn parse_chunk(gpa: Allocator, reader: *Io.Reader, previous: ?ChunkType, header: *Header, data: *std.ArrayList(u8)) !ChunkType {
     const chunklen = try reader.takeInt(u32, .big);
     const chunktype: ChunkType = @enumFromInt(try reader.takeInt(u32, .big));
@@ -265,9 +262,7 @@ fn process_scanlines(gpa: Allocator, header: *Header, sreader: *Io.Reader, outpu
         .TruecolorAlpha => 4 * header.bitdepth / 8,
         else => return PngError.InvalidBitDepth,
     };
-    std.log.info("BPP: {d}", .{bpp});
 
-    // TODO: Process the colortype properly. Currently hardcoded for truecolor
     var current = try gpa.alloc(u8, header.width * bpp);
     defer gpa.free(current);
     var previous = try gpa.alloc(u8, header.width * bpp);
@@ -328,22 +323,104 @@ fn process_scanlines(gpa: Allocator, header: *Header, sreader: *Io.Reader, outpu
         }
 
         // Read current into image output buffer
-        for (0..header.width) |x| {
-            switch (header.colortype) {
-                .Greyscale => {},
-                .Truecolor => {
+        switch (header.colortype) {
+            .Greyscale => {
+                for (0..header.width) |x| {
+                    const index = (y * header.width + x) * 4;
+                    if (header.bitdepth <= 8) {
+                        const shift: u3 = @intCast(8 -| header.bitdepth);
+                        output.*[index] = current[x] >> shift;
+                        output.*[index + 1] = current[x] >> shift;
+                        output.*[index + 2] = current[x] >> shift;
+                        output.*[index + 3] = 255;
+                    } else if (header.bitdepth == 16) {
+                        const reinterp: []u16 = @ptrCast(@alignCast(current));
+                        const w = reinterp[x] % 256;
+                        output.*[index] = @truncate(w);
+                        output.*[index + 1] = @truncate(w);
+                        output.*[index + 2] = @truncate(w);
+                        output.*[index + 3] = 255;
+                    }
+                }
+            },
+            .Truecolor => {
+                for (0..header.width) |x| {
                     const index = (y * header.width + x) * 4;
                     const cindex = x * 3;
-                    output.*[index] = current[cindex];
-                    output.*[index + 1] = current[cindex + 1];
-                    output.*[index + 2] = current[cindex + 2];
+                    if (header.bitdepth == 8) {
+                        output.*[index] = current[cindex];
+                        output.*[index + 1] = current[cindex + 1];
+                        output.*[index + 2] = current[cindex + 2];
+                        output.*[index + 3] = 255;
+                    } else {
+                        const reinterp: []u16 = @ptrCast(@alignCast(current));
+                        const r = reinterp[cindex] % 256;
+                        const g = reinterp[cindex + 1] % 256;
+                        const b = reinterp[cindex + 2] % 256;
+                        output.*[index] = @truncate(r);
+                        output.*[index + 1] = @truncate(g);
+                        output.*[index + 2] = @truncate(b);
+                        output.*[index + 3] = 255;
+                    }
+                }
+            },
+            .Indexed => {
+                const palette = header.palette orelse return PngError.MissingPalette;
+                for (0..header.width) |x| {
+                    const index = (y * header.width + x) * 4;
+                    const shift: u3 = @intCast(8 -| header.bitdepth);
+                    const pindex = current[x] >> shift;
+                    if (pindex >= palette.items.len) return error.OutOfPaletteBounds;
+                    const color = palette.items[pindex];
+                    output.*[index] = color.r;
+                    output.*[index + 1] = color.g;
+                    output.*[index + 2] = color.b;
                     output.*[index + 3] = 255;
-                },
-                .Indexed => {},
-                .GreyscaleAlpha => {},
-                .TruecolorAlpha => {},
-                else => return PngError.InvalidColorType,
-            }
+                }
+            },
+            .GreyscaleAlpha => {
+                for (0..header.width) |x| {
+                    const index = (y * header.width + x) * 4;
+                    const cindex = x * 2;
+                    if (header.bitdepth == 8) {
+                        output.*[index] = current[cindex];
+                        output.*[index + 1] = current[cindex];
+                        output.*[index + 2] = current[cindex];
+                        output.*[index + 3] = current[cindex + 1];
+                    } else {
+                        const reinterp: []u16 = @ptrCast(@alignCast(current));
+                        const w = reinterp[cindex] % 256;
+                        const a = reinterp[cindex + 1] % 256;
+                        output.*[index] = @truncate(w);
+                        output.*[index + 1] = @truncate(w);
+                        output.*[index + 2] = @truncate(w);
+                        output.*[index + 3] = @truncate(a);
+                    }
+                }
+            },
+            .TruecolorAlpha => {
+                for (0..header.width) |x| {
+                    const index = (y * header.width + x) * 4;
+                    const cindex = x * 4;
+                    if (header.bitdepth == 8) {
+                        output.*[index] = current[cindex];
+                        output.*[index + 1] = current[cindex + 1];
+                        output.*[index + 2] = current[cindex + 2];
+                        output.*[index + 3] = current[cindex + 3];
+                    } else {
+                        const reinterp: []u16 = @ptrCast(@alignCast(current));
+                        const r = reinterp[cindex] % 256;
+                        const g = reinterp[cindex + 1] % 256;
+                        const b = reinterp[cindex + 2] % 256;
+                        const a = reinterp[cindex + 3] % 256;
+                        output.*[index] = @truncate(r);
+                        output.*[index + 1] = @truncate(g);
+                        output.*[index + 2] = @truncate(b);
+                        output.*[index + 3] = @truncate(a);
+                    }
+                }
+            },
+            else => return PngError.InvalidColorType,
         }
 
         // Save current to previous
