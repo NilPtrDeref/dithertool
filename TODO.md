@@ -5,9 +5,9 @@
 
 - [ ] Input Formats
   - [ ] Image
-    - [ ] PNG
+    - [x] PNG
       - [x] Read critical chunk types
-      - [ ] Interpret data to get pixel information
+      - [x] Interpret data to get pixel information
 
     - [ ] Jpg/Jpeg
 
@@ -29,8 +29,8 @@
 - [ ] User Interface (Using OpenGL)
   - [x] Open Window
   - [x] Basic Texture Rendering
-  - [ ] Load image
-  - [ ] Present image
+  - [x] Load image
+  - [x] Present image
   - [ ] Menu
   - [ ] Live dither image
 
