@@ -16,24 +16,25 @@ const Texture = @import("texture.zig");
 const TEXTURE_VERTEX_SOURCE = @embedFile("shaders/texture.vert");
 const TEXTURE_FRAGMENT_SOURCE = @embedFile("shaders/texture.frag");
 
+// ErrorFun Has to stay callconv(.c) because it doesn't pass a reference to the window in order to wrap it properly
 pub const ErrorFun = *const fn (error_code: c_int, description: [*c]const u8) callconv(.c) void;
-pub const WindowPosFun = *const fn (window: *Window, xpos: c_int, ypos: c_int) callconv(.c) void;
-pub const WindowSizeFun = *const fn (window: *Window, width: c_int, height: c_int) callconv(.c) void;
-pub const WindowCloseFun = *const fn (window: *Window) callconv(.c) void;
-pub const WindowRefreshFun = *const fn (window: *Window) callconv(.c) void;
-pub const WindowFocusFun = *const fn (window: *Window, focused: c_int) callconv(.c) void;
-pub const WindowIconifyFun = *const fn (window: *Window, iconified: c_int) callconv(.c) void;
-pub const WindowMaximizeFun = *const fn (window: *Window, iconified: c_int) callconv(.c) void;
-pub const FramebufferSizeFun = *const fn (window: *Window, width: c_int, height: c_int) callconv(.c) void;
-pub const WindowContentScaleFun = *const fn (window: *Window, xscale: f32, yscale: f32) callconv(.c) void;
-pub const MouseButtonFun = *const fn (window: *Window, button: c_int, action: c_int, mods: c_int) callconv(.c) void;
-pub const CursorPosFun = *const fn (window: *Window, xpos: f64, ypos: f64) callconv(.c) void;
-pub const CursorEnterFun = *const fn (window: *Window, entered: c_int) callconv(.c) void;
-pub const ScrollFun = *const fn (window: *Window, xoffset: f64, yoffset: f64) callconv(.c) void;
-pub const KeyFun = *const fn (window: *Window, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.c) void;
-pub const CharFun = *const fn (window: *Window, codepoint: c_uint) callconv(.c) void;
-pub const CharmodsFun = *const fn (window: *Window, codepoint: c_uint, mods: c_int) callconv(.c) void;
-pub const DropFun = *const fn (window: *Window, path_count: c_int, paths: [*c]const u8) callconv(.c) void;
+pub const WindowPosFun = *const fn (window: *Window, xpos: c_int, ypos: c_int) void;
+pub const WindowSizeFun = *const fn (window: *Window, width: c_int, height: c_int) void;
+pub const WindowCloseFun = *const fn (window: *Window) void;
+pub const WindowRefreshFun = *const fn (window: *Window) void;
+pub const WindowFocusFun = *const fn (window: *Window, focused: c_int) void;
+pub const WindowIconifyFun = *const fn (window: *Window, iconified: c_int) void;
+pub const WindowMaximizeFun = *const fn (window: *Window, iconified: c_int) void;
+pub const FramebufferSizeFun = *const fn (window: *Window, width: c_int, height: c_int) void;
+pub const WindowContentScaleFun = *const fn (window: *Window, xscale: f32, yscale: f32) void;
+pub const MouseButtonFun = *const fn (window: *Window, button: c_int, action: c_int, mods: c_int) void;
+pub const CursorPosFun = *const fn (window: *Window, xpos: f64, ypos: f64) void;
+pub const CursorEnterFun = *const fn (window: *Window, entered: c_int) void;
+pub const ScrollFun = *const fn (window: *Window, xoffset: f64, yoffset: f64) void;
+pub const KeyFun = *const fn (window: *Window, key: c_int, scancode: c_int, action: c_int, mods: c_int) void;
+pub const CharFun = *const fn (window: *Window, codepoint: c_uint) void;
+pub const CharmodsFun = *const fn (window: *Window, codepoint: c_uint, mods: c_int) void;
+pub const DropFun = *const fn (window: *Window, path_count: c_int, paths: [*c][*c]const u8) void;
 
 pub const InitOptions = struct {
     error_callback: ?ErrorFun = null,
@@ -151,7 +152,7 @@ pub fn SwapBuffers(window: *Window) void {
     glfw.glfwPollEvents();
 }
 
-// TODO: Expand to take src/dest rectangles.
+// FIXME: Expand to take src/dest rectangles.
 pub fn DrawTexture(window: Window, texture: Texture) void {
     window.texture_program.use();
     window.texture_buffer.bind();
@@ -173,7 +174,7 @@ pub fn SetErrorCallback(window: *Window, function: ?ErrorFun) void {
 }
 
 pub fn SetWindowPosCallback(window: *Window, function: ?WindowPosFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetWindowPosCallback(window.window, WindowPosCallback);
     } else {
         _ = glfw.glfwSetWindowPosCallback(window.window, null);
@@ -205,7 +206,7 @@ fn WindowSizeCallback(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) callcon
 }
 
 pub fn SetWindowCloseCallback(window: *Window, function: ?WindowCloseFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetWindowCloseCallback(window.window, WindowCloseCallback);
     } else {
         _ = glfw.glfwSetWindowCloseCallback(window.window, null);
@@ -221,7 +222,7 @@ fn WindowCloseCallback(w: ?*glfw.GLFWwindow) callconv(.c) void {
 }
 
 pub fn SetWindowRefreshCallback(window: *Window, function: ?WindowRefreshFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetWindowRefreshCallback(window.window, WindowRefreshCallback);
     } else {
         _ = glfw.glfwSetWindowRefreshCallback(window.window, null);
@@ -237,7 +238,7 @@ fn WindowRefreshCallback(w: ?*glfw.GLFWwindow) callconv(.c) void {
 }
 
 pub fn SetWindowFocusCallback(window: *Window, function: ?WindowFocusFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetWindowFocusCallback(window.window, WindowFocusCallback);
     } else {
         _ = glfw.glfwSetWindowFocusCallback(window.window, null);
@@ -253,7 +254,7 @@ fn WindowFocusCallback(w: ?*glfw.GLFWwindow, focused: c_int) callconv(.c) void {
 }
 
 pub fn SetWindowIconifyCallback(window: *Window, function: ?WindowIconifyFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetWindowIconifyCallback(window.window, WindowIconifyCallback);
     } else {
         _ = glfw.glfwSetWindowIconifyCallback(window.window, null);
@@ -269,7 +270,7 @@ fn WindowIconifyCallback(w: ?*glfw.GLFWwindow, iconified: c_int) callconv(.c) vo
 }
 
 pub fn SetWindowMaximizeCallback(window: *Window, function: ?WindowMaximizeFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetWindowMaximizeCallback(window.window, WindowMaximizeCallback);
     } else {
         _ = glfw.glfwSetWindowMaximizeCallback(window.window, null);
@@ -285,7 +286,7 @@ fn WindowMaximizeCallback(w: ?*glfw.GLFWwindow, iconified: c_int) callconv(.c) v
 }
 
 pub fn SetFramebufferSizeCallback(window: *Window, function: ?FramebufferSizeFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetFramebufferSizeCallback(window.window, FramebufferSizeCallback);
     } else {
         _ = glfw.glfwSetFramebufferSizeCallback(window.window, null);
@@ -301,7 +302,7 @@ fn FramebufferSizeCallback(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) ca
 }
 
 pub fn SetWindowContentScaleCallback(window: *Window, function: ?WindowContentScaleFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetWindowContentScaleCallback(window.window, WindowContentScaleCallback);
     } else {
         _ = glfw.glfwSetWindowContentScaleCallback(window.window, null);
@@ -317,7 +318,7 @@ fn WindowContentScaleCallback(w: ?*glfw.GLFWwindow, xscale: f32, yscale: f32) ca
 }
 
 pub fn SetMouseButtonCallback(window: *Window, function: ?MouseButtonFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetMouseButtonCallback(window.window, MouseButtonCallback);
     } else {
         _ = glfw.glfwSetMouseButtonCallback(window.window, null);
@@ -333,7 +334,7 @@ fn MouseButtonCallback(w: ?*glfw.GLFWwindow, button: c_int, action: c_int, mods:
 }
 
 pub fn SetCursorPosCallback(window: *Window, function: ?CursorPosFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetCursorPosCallback(window.window, CursorPosCallback);
     } else {
         _ = glfw.glfwSetCursorPosCallback(window.window, null);
@@ -349,7 +350,7 @@ fn CursorPosCallback(w: ?*glfw.GLFWwindow, xpos: f64, ypos: f64) callconv(.c) vo
 }
 
 pub fn SetCursorEnterCallback(window: *Window, function: ?CursorEnterFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetCursorEnterCallback(window.window, CursorEnterCallback);
     } else {
         _ = glfw.glfwSetCursorEnterCallback(window.window, null);
@@ -365,7 +366,7 @@ fn CursorEnterCallback(w: ?*glfw.GLFWwindow, entered: c_int) callconv(.c) void {
 }
 
 pub fn SetScrollCallback(window: *Window, function: ?ScrollFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetScrollCallback(window.window, ScrollCallback);
     } else {
         _ = glfw.glfwSetScrollCallback(window.window, null);
@@ -381,7 +382,7 @@ fn ScrollCallback(w: ?*glfw.GLFWwindow, xoffset: f64, yoffset: f64) callconv(.c)
 }
 
 pub fn SetKeyCallback(window: *Window, function: ?KeyFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetKeyCallback(window.window, KeyCallback);
     } else {
         _ = glfw.glfwSetKeyCallback(window.window, null);
@@ -397,7 +398,7 @@ fn KeyCallback(w: ?*glfw.GLFWwindow, key: c_int, scancode: c_int, action: c_int,
 }
 
 pub fn SetCharCallback(window: *Window, function: ?CharFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetCharCallback(window.window, CharCallback);
     } else {
         _ = glfw.glfwSetCharCallback(window.window, null);
@@ -413,7 +414,7 @@ fn CharCallback(w: ?*glfw.GLFWwindow, codepoint: c_uint) callconv(.c) void {
 }
 
 pub fn SetCharmodsCallback(window: *Window, function: ?CharmodsFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetCharModsCallback(window.window, CharmodsCallback);
     } else {
         _ = glfw.glfwSetCharModsCallback(window.window, null);
@@ -429,7 +430,7 @@ fn CharmodsCallback(w: ?*glfw.GLFWwindow, codepoint: c_uint, mods: c_int) callco
 }
 
 pub fn SetDropCallback(window: *Window, function: ?DropFun) void {
-    if (function) {
+    if (function != null) {
         _ = glfw.glfwSetDropCallback(window.window, DropCallback);
     } else {
         _ = glfw.glfwSetDropCallback(window.window, null);
