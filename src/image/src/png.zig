@@ -216,7 +216,7 @@ fn parse_chunk(gpa: Allocator, reader: *Io.Reader, previous: ?ChunkType, header:
 
             const chunk = try reader.readAlloc(gpa, chunklen);
             defer gpa.free(chunk);
-            if (!valid_crc(.PLTE, &.{}, try reader.takeInt(u32, .big))) return PngError.InvalidCrc;
+            if (!valid_crc(.PLTE, chunk, try reader.takeInt(u32, .big))) return PngError.InvalidCrc;
             var preader: Io.Reader = .fixed(chunk);
 
             header.palette = try .initCapacity(gpa, palettesize);
