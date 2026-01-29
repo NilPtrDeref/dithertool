@@ -88,7 +88,6 @@ const Header = struct {
     palette: ?Palette = null,
 };
 
-// FIXME:
 pub fn parse(gpa: Allocator, reader: *Io.Reader) !*Image {
     // Check PNG signature
     if (PngSignature != try reader.peekInt(u64, .big)) return PngError.InvalidSignature;
@@ -119,11 +118,10 @@ pub fn parse(gpa: Allocator, reader: *Io.Reader) !*Image {
     image.data = try gpa.alloc(u8, header.width * header.height * 4);
     errdefer gpa.free(image.data);
 
-    // TODO: Read data into pixel information and then store.
-    var dreader: Io.Reader = .fixed(scanlines.items);
+    var sreader: Io.Reader = .fixed(scanlines.items);
     var buffer: [std.compress.flate.max_window_len]u8 = undefined;
-    var decompressor = std.compress.flate.Decompress.init(&dreader, .zlib, &buffer);
-    _ = try decompressor.reader.discardRemaining();
+    var decompressor = std.compress.flate.Decompress.init(&sreader, .zlib, &buffer);
+    try process_scanlines(&header, &decompressor.reader, &image.data);
 
     return image;
 }
@@ -186,7 +184,6 @@ fn parse_chunk(gpa: Allocator, reader: *Io.Reader, previous: ?ChunkType, header:
             if (try hreader.takeByte() != 0) return PngError.InvalidFilterMethod;
             header.interlace = @enumFromInt(try hreader.takeByte());
             switch (header.interlace) {
-                .Adam7 => return PngError.UnsupportedInterlaceMethod, // FIXME: Add support for this interlace method
                 _ => return PngError.InvalidInterlaceMethod,
                 else => {},
             }
@@ -241,4 +238,12 @@ fn parse_chunk(gpa: Allocator, reader: *Io.Reader, previous: ?ChunkType, header:
     }
 
     return chunktype;
+}
+
+// TODO: Read data into pixel information and then store.
+fn process_scanlines(header: *Header, sreader: *Io.Reader, output: *[]u8) !void {
+    if (header.interlace == .Adam7) return PngError.UnsupportedInterlaceMethod; // FIXME: Add support for Adam7 interlacing
+
+    _ = output;
+    _ = try sreader.discardRemaining();
 }
