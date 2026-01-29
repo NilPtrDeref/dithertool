@@ -252,78 +252,102 @@ fn parse_chunk(gpa: Allocator, reader: *Io.Reader, previous: ?ChunkType, header:
 fn process_scanlines(gpa: Allocator, header: *Header, sreader: *Io.Reader, output: *[]u8) !void {
     if (header.interlace == .Adam7) return PngError.UnsupportedInterlaceMethod; // FIXME: Add support for Adam7 interlacing
 
+    // Bytes Per Pixel
+    const bpp = switch (header.colortype) {
+        .Greyscale => switch (header.bitdepth) {
+            1, 2, 4 => 1,
+            8, 16 => header.bitdepth / 8,
+            else => return PngError.InvalidBitDepth,
+        },
+        .Truecolor => 3 * header.bitdepth / 8,
+        .Indexed => 1,
+        .GreyscaleAlpha => 2 * header.bitdepth / 8,
+        .TruecolorAlpha => 4 * header.bitdepth / 8,
+        else => return PngError.InvalidBitDepth,
+    };
+    std.log.info("BPP: {d}", .{bpp});
+
     // TODO: Process the colortype properly. Currently hardcoded for truecolor
-    var current = try gpa.alloc(u8, header.width * 3);
+    var current = try gpa.alloc(u8, header.width * bpp);
     defer gpa.free(current);
-    var previous = try gpa.alloc(u8, header.width * 3);
+    var previous = try gpa.alloc(u8, header.width * bpp);
     defer gpa.free(previous);
     @memset(previous, 0);
 
     for (0..header.height) |y| {
+        // Read filter and current
         const filter: FilterType = @enumFromInt(try sreader.takeByte());
         try sreader.readSliceAll(current);
-        for (0..header.width) |x| {
-            switch (filter) {
-                .None => {
-                    const index = (y * header.width + x) * 4;
-                    const cindex = x * 3;
-                    output.*[index] = current[cindex];
-                    output.*[index + 1] = current[cindex + 1];
-                    output.*[index + 2] = current[cindex + 2];
-                    output.*[index + 3] = 255;
-                },
-                .Sub => {
-                    const index = (y * header.width + x) * 4;
-                    const cindex = x * 3;
-                    if (x != 0) {
-                        output.*[index] = current[cindex] -| current[cindex - 3];
-                        output.*[index + 1] = current[cindex + 1] -| current[cindex - 2];
-                        output.*[index + 2] = current[cindex + 2] -| current[cindex - 1];
-                        output.*[index + 3] = 255;
+
+        // Transform current based on filter
+        switch (filter) {
+            .None => {},
+            .Sub => {
+                for (current, 0..) |byte, index| {
+                    const a: u16 = if (index < bpp) 0 else current[index - bpp];
+                    const value: u16 = byte + a;
+                    current[index] = @truncate(value % 256);
+                }
+            },
+            .Up => {
+                for (current, 0..) |byte, index| {
+                    const b: u16 = if (y == 0) 0 else previous[index];
+                    const value: u16 = byte + b;
+                    current[index] = @truncate(value % 256);
+                }
+            },
+            .Average => {
+                for (current, 0..) |byte, index| {
+                    const a: f32 = if (index < bpp) 0 else current[index - bpp];
+                    const b: f32 = if (y == 0) 0 else previous[index];
+                    const value: u16 = byte + @as(u16, @intFromFloat(@floor((a + b) / 2.0)));
+                    current[index] = @truncate(value % 256);
+                }
+            },
+            .Paeth => {
+                for (current, 0..) |byte, index| {
+                    const a: u15 = if (index < bpp) 0 else current[index - bpp];
+                    const b: u15 = if (y == 0) 0 else previous[index];
+                    const c: u15 = if (y == 0 or index < bpp) 0 else previous[index - bpp];
+                    const p: i16 = a + b -| c;
+                    const pa = @abs(p - a);
+                    const pb = @abs(p - b);
+                    const pc = @abs(p - c);
+                    var value: u16 = 0;
+                    if (pa <= pb and pa <= pc) {
+                        value = byte + a;
+                    } else if (pb <= pc) {
+                        value = byte + b;
                     } else {
-                        output.*[index] = current[cindex];
-                        output.*[index + 1] = current[cindex + 1];
-                        output.*[index + 2] = current[cindex + 2];
-                        output.*[index + 3] = 255;
+                        value = byte + c;
                     }
-                },
-                .Up => {
-                    const index = (y * header.width + x) * 4;
-                    const cindex = x * 3;
-                    if (x != 0) {
-                        output.*[index] = current[cindex] -| previous[cindex];
-                        output.*[index + 1] = current[cindex + 1] -| previous[cindex + 1];
-                        output.*[index + 2] = current[cindex + 2] -| previous[cindex + 2];
-                        output.*[index + 3] = 255;
-                    } else {
-                        output.*[index] = current[cindex];
-                        output.*[index + 1] = current[cindex + 1];
-                        output.*[index + 2] = current[cindex + 2];
-                        output.*[index + 3] = 255;
-                    }
-                },
-                .Average => {
-                    // FIXME: Actually implement
-                    const index = (y * header.width + x) * 4;
-                    const cindex = x * 3;
-                    output.*[index] = current[cindex];
-                    output.*[index + 1] = current[cindex + 1];
-                    output.*[index + 2] = current[cindex + 2];
-                    output.*[index + 3] = 255;
-                },
-                .Paeth => {
-                    // FIXME: Actually implement
-                    const index = (y * header.width + x) * 4;
-                    const cindex = x * 3;
-                    output.*[index] = current[cindex];
-                    output.*[index + 1] = current[cindex + 1];
-                    output.*[index + 2] = current[cindex + 2];
-                    output.*[index + 3] = 255;
-                },
-                _ => return PngError.InvalidFilterMethod,
-            }
-            @memcpy(previous, current);
+                    current[index] = @truncate(value % 256);
+                }
+            },
+            _ => return PngError.InvalidFilterMethod,
         }
+
+        // Read current into image output buffer
+        for (0..header.width) |x| {
+            switch (header.colortype) {
+                .Greyscale => {},
+                .Truecolor => {
+                    const index = (y * header.width + x) * 4;
+                    const cindex = x * 3;
+                    output.*[index] = current[cindex];
+                    output.*[index + 1] = current[cindex + 1];
+                    output.*[index + 2] = current[cindex + 2];
+                    output.*[index + 3] = 255;
+                },
+                .Indexed => {},
+                .GreyscaleAlpha => {},
+                .TruecolorAlpha => {},
+                else => return PngError.InvalidColorType,
+            }
+        }
+
+        // Save current to previous
+        @memcpy(previous, current);
     }
 
     _ = try sreader.discardRemaining();
