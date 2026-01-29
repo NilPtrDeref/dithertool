@@ -66,6 +66,7 @@ gpa: Allocator,
 window: *glfw.GLFWwindow,
 procs: gl.ProcTable,
 callbacks: Callbacks,
+userdata: *anyopaque,
 
 texture_array: *Array,
 texture_buffer: Buffer,
@@ -140,6 +141,10 @@ pub fn deinit(window: *Window) void {
 
 pub fn ShouldClose(window: *Window) bool {
     return glfw.glfwWindowShouldClose(window.window) == glfw.GLFW_TRUE;
+}
+
+pub fn SetUserData(window: *Window, userdata: *anyopaque) void {
+    window.userdata = userdata;
 }
 
 pub fn Clear(_: *Window, color: Color) void {
