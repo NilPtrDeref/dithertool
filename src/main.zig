@@ -5,13 +5,15 @@ const ui = @import("ui");
 const Window = ui.Window;
 const Texture = ui.Texture;
 
-const background: Window.Color = .{ .r = 0x3F, .g = 0x3F, .b = 0x3F, .a = 0xFF };
+const background: ui.Color = .{ .r = 0x3F, .g = 0x3F, .b = 0x3F, .a = 0xFF };
 
 pub fn main(init: std.process.Init) !void {
     var image = try Image.load(init.gpa, init.io, "tm.png");
     defer image.deinit(init.gpa);
 
-    var w = try Window.init(init.gpa, 800, 640, "Dithertool");
+    var w = try Window.init(init.gpa, 800, 640, "Dithertool", .{
+        .error_callback = ErrorCallback,
+    });
     defer w.deinit();
 
     // Text texure data
@@ -30,4 +32,8 @@ pub fn main(init: std.process.Init) !void {
         w.DrawTexture(texture);
         w.SwapBuffers();
     }
+}
+
+fn ErrorCallback(error_code: c_int, description: [*c]const u8) callconv(.c) void {
+    std.log.err("Error ({d}): {s}\n", .{ error_code, std.mem.span(description) });
 }

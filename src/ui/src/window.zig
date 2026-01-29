@@ -1,4 +1,6 @@
 const std = @import("std");
+const root = @import("root.zig");
+const Color = root.Color;
 const Allocator = std.mem.Allocator;
 const gl = @import("gl");
 const glfw = @cImport({
@@ -14,31 +16,68 @@ const Texture = @import("texture.zig");
 const TEXTURE_VERTEX_SOURCE = @embedFile("shaders/texture.vert");
 const TEXTURE_FRAGMENT_SOURCE = @embedFile("shaders/texture.frag");
 
-// TODO: Find a better place for this?
-/// Accepts rgba as ranges from 0-255
-pub const Color = struct {
-    r: f32,
-    g: f32,
-    b: f32,
-    a: f32,
+pub const ErrorFun = *const fn (error_code: c_int, description: [*c]const u8) callconv(.c) void;
+pub const WindowPosFun = *const fn (window: *Window, xpos: c_int, ypos: c_int) callconv(.c) void;
+pub const WindowSizeFun = *const fn (window: *Window, width: c_int, height: c_int) callconv(.c) void;
+pub const WindowCloseFun = *const fn (window: *Window) callconv(.c) void;
+pub const WindowRefreshFun = *const fn (window: *Window) callconv(.c) void;
+pub const WindowFocusFun = *const fn (window: *Window, focused: c_int) callconv(.c) void;
+pub const WindowIconifyFun = *const fn (window: *Window, iconified: c_int) callconv(.c) void;
+pub const WindowMaximizeFun = *const fn (window: *Window, iconified: c_int) callconv(.c) void;
+pub const FramebufferSizeFun = *const fn (window: *Window, width: c_int, height: c_int) callconv(.c) void;
+pub const WindowContentScaleFun = *const fn (window: *Window, xscale: f32, yscale: f32) callconv(.c) void;
+pub const MouseButtonFun = *const fn (window: *Window, button: c_int, action: c_int, mods: c_int) callconv(.c) void;
+pub const CursorPosFun = *const fn (window: *Window, xpos: f64, ypos: f64) callconv(.c) void;
+pub const CursorEnterFun = *const fn (window: *Window, entered: c_int) callconv(.c) void;
+pub const ScrollFun = *const fn (window: *Window, xoffset: f64, yoffset: f64) callconv(.c) void;
+pub const KeyFun = *const fn (window: *Window, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.c) void;
+pub const CharFun = *const fn (window: *Window, codepoint: c_uint) callconv(.c) void;
+pub const CharmodsFun = *const fn (window: *Window, codepoint: c_uint, mods: c_int) callconv(.c) void;
+pub const DropFun = *const fn (window: *Window, path_count: c_int, paths: [*c]const u8) callconv(.c) void;
+
+pub const InitOptions = struct {
+    error_callback: ?ErrorFun = null,
+};
+
+pub const Callbacks = struct {
+    error_callback: ?ErrorFun = null,
+    window_pos_callback: ?WindowPosFun = null,
+    window_size_callback: ?WindowSizeFun = null,
+    window_close_callback: ?WindowCloseFun = null,
+    window_refresh_callback: ?WindowRefreshFun = null,
+    window_focus_callback: ?WindowFocusFun = null,
+    window_iconify_callback: ?WindowIconifyFun = null,
+    window_maximize_callback: ?WindowMaximizeFun = null,
+    framebuffer_size_callback: ?FramebufferSizeFun = null,
+    window_content_scale_callback: ?WindowContentScaleFun = null,
+    mouse_button_callback: ?MouseButtonFun = null,
+    cursor_pos_callback: ?CursorPosFun = null,
+    cursor_enter_callback: ?CursorEnterFun = null,
+    scroll_callback: ?ScrollFun = null,
+    key_callback: ?KeyFun = null,
+    char_callback: ?CharFun = null,
+    charmods_callback: ?CharmodsFun = null,
+    drop_callback: ?DropFun = null,
 };
 
 const Window = @This();
 gpa: Allocator,
 window: *glfw.GLFWwindow,
 procs: gl.ProcTable,
+callbacks: Callbacks,
 
 texture_array: *Array,
 texture_buffer: Buffer,
 texture_program: Program,
 
 /// It is undefined behavior to create more that a single Window.
-pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:0]const u8) !*Window {
-    _ = glfw.glfwSetErrorCallback(ErrorFun);
+pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:0]const u8, options: InitOptions) !*Window {
+    _ = glfw.glfwSetErrorCallback(options.error_callback);
 
     var window = try gpa.create(Window);
     errdefer gpa.destroy(window);
     window.gpa = gpa;
+    window.callbacks = .{ .error_callback = options.error_callback };
 
     if (glfw.glfwInit() != glfw.GLFW_TRUE) return error.GlfwInitError;
     errdefer glfw.glfwTerminate();
@@ -52,23 +91,10 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     glfw.glfwMakeContextCurrent(window.window);
     glfw.glfwSwapInterval(1);
     glfw.glfwSetWindowUserPointer(window.window, window);
-    _ = glfw.glfwSetWindowPosCallback(window.window, WindowPosFun);
-    _ = glfw.glfwSetWindowSizeCallback(window.window, WindowSizeFun);
-    _ = glfw.glfwSetWindowCloseCallback(window.window, WindowCloseFun);
-    _ = glfw.glfwSetWindowRefreshCallback(window.window, WindowRefreshFun);
-    _ = glfw.glfwSetWindowFocusCallback(window.window, WindowFocusFun);
-    _ = glfw.glfwSetWindowIconifyCallback(window.window, WindowIconifyFun);
-    _ = glfw.glfwSetWindowMaximizeCallback(window.window, WindowMaximizeFun);
-    _ = glfw.glfwSetFramebufferSizeCallback(window.window, FramebufferSizeFun);
-    _ = glfw.glfwSetWindowContentScaleCallback(window.window, WindowContentScaleFun);
-    _ = glfw.glfwSetMouseButtonCallback(window.window, MouseButtonFun);
-    _ = glfw.glfwSetCursorPosCallback(window.window, CursorPosFun);
-    _ = glfw.glfwSetCursorEnterCallback(window.window, CursorEnterFun);
-    _ = glfw.glfwSetScrollCallback(window.window, ScrollFun);
-    _ = glfw.glfwSetKeyCallback(window.window, KeyFun);
-    _ = glfw.glfwSetCharCallback(window.window, CharFun);
-    _ = glfw.glfwSetCharModsCallback(window.window, CharmodsFun);
-    _ = glfw.glfwSetDropCallback(window.window, DropFun);
+
+    // NOTE: Need to keep window size callback bound for Viewport resizing. If that responsibility is moved to the user,
+    // this line can be removed
+    _ = glfw.glfwSetWindowSizeCallback(window.window, WindowSizeCallback);
 
     // Initialize the procedure table.
     if (!window.procs.init(glfw.glfwGetProcAddress)) return error.InitFailed;
@@ -141,93 +167,279 @@ pub fn DrawTexture(window: Window, texture: Texture) void {
     gl.DrawArrays(glfw.GL_TRIANGLES, 0, 6);
 }
 
-pub fn ErrorFun(error_code: c_int, description: [*c]const u8) callconv(.c) void {
-    std.log.err("Error ({d}): {s}\n", .{ error_code, std.mem.span(description) });
+pub fn SetErrorCallback(window: *Window, function: ?ErrorFun) void {
+    _ = glfw.glfwSetErrorCallback(function);
+    window.callbacks.error_callback = function;
 }
 
-pub fn WindowPosFun(w: ?*glfw.GLFWwindow, xpos: c_int, ypos: c_int) callconv(.c) void {
-    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, xpos, ypos };
+pub fn SetWindowPosCallback(window: *Window, function: ?WindowPosFun) void {
+    if (function) {
+        _ = glfw.glfwSetWindowPosCallback(window.window, WindowPosCallback);
+    } else {
+        _ = glfw.glfwSetWindowPosCallback(window.window, null);
+    }
+    window.callbacks.window_pos_callback = function;
 }
 
-pub fn WindowSizeFun(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.c) void {
+fn WindowPosCallback(w: ?*glfw.GLFWwindow, xpos: c_int, ypos: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+    if (window.callbacks.window_pos_callback) |callback| {
+        callback(window, xpos, ypos);
+    }
+}
+
+pub fn SetWindowSizeCallback(window: *Window, function: ?WindowSizeFun) void {
+    _ = glfw.glfwSetWindowSizeCallback(window.window, WindowSizeCallback);
+    window.callbacks.window_size_callback = function;
+}
+
+fn WindowSizeCallback(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.c) void {
+    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+
     // TODO: Decide if this is the user's responsibility
     gl.Viewport(0, 0, width, height);
-    _ = .{ window, width, height };
+
+    if (window.callbacks.window_size_callback) |callback| {
+        callback(window, width, height);
+    }
 }
 
-pub fn WindowCloseFun(w: ?*glfw.GLFWwindow) callconv(.c) void {
-    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = window;
+pub fn SetWindowCloseCallback(window: *Window, function: ?WindowCloseFun) void {
+    if (function) {
+        _ = glfw.glfwSetWindowCloseCallback(window.window, WindowCloseCallback);
+    } else {
+        _ = glfw.glfwSetWindowCloseCallback(window.window, null);
+    }
+    window.callbacks.window_close_callback = function;
 }
 
-pub fn WindowRefreshFun(w: ?*glfw.GLFWwindow) callconv(.c) void {
+fn WindowCloseCallback(w: ?*glfw.GLFWwindow) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = window;
+    if (window.callbacks.window_close_callback) |callback| {
+        callback(window);
+    }
 }
 
-pub fn WindowFocusFun(w: ?*glfw.GLFWwindow, focused: c_int) callconv(.c) void {
-    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, focused };
+pub fn SetWindowRefreshCallback(window: *Window, function: ?WindowRefreshFun) void {
+    if (function) {
+        _ = glfw.glfwSetWindowRefreshCallback(window.window, WindowRefreshCallback);
+    } else {
+        _ = glfw.glfwSetWindowRefreshCallback(window.window, null);
+    }
+    window.callbacks.window_refresh_callback = function;
 }
 
-pub fn WindowIconifyFun(w: ?*glfw.GLFWwindow, iconified: c_int) callconv(.c) void {
+fn WindowRefreshCallback(w: ?*glfw.GLFWwindow) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, iconified };
+    if (window.callbacks.window_refresh_callback) |callback| {
+        callback(window);
+    }
 }
 
-pub fn WindowMaximizeFun(w: ?*glfw.GLFWwindow, iconified: c_int) callconv(.c) void {
-    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, iconified };
+pub fn SetWindowFocusCallback(window: *Window, function: ?WindowFocusFun) void {
+    if (function) {
+        _ = glfw.glfwSetWindowFocusCallback(window.window, WindowFocusCallback);
+    } else {
+        _ = glfw.glfwSetWindowFocusCallback(window.window, null);
+    }
+    window.callbacks.window_focus_callback = function;
 }
 
-pub fn FramebufferSizeFun(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.c) void {
+fn WindowFocusCallback(w: ?*glfw.GLFWwindow, focused: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, width, height };
+    if (window.callbacks.window_focus_callback) |callback| {
+        callback(window, focused);
+    }
 }
 
-pub fn WindowContentScaleFun(w: ?*glfw.GLFWwindow, xscale: f32, yscale: f32) callconv(.c) void {
-    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, xscale, yscale };
+pub fn SetWindowIconifyCallback(window: *Window, function: ?WindowIconifyFun) void {
+    if (function) {
+        _ = glfw.glfwSetWindowIconifyCallback(window.window, WindowIconifyCallback);
+    } else {
+        _ = glfw.glfwSetWindowIconifyCallback(window.window, null);
+    }
+    window.callbacks.window_iconify_callback = function;
 }
 
-pub fn MouseButtonFun(w: ?*glfw.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.c) void {
+fn WindowIconifyCallback(w: ?*glfw.GLFWwindow, iconified: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, button, action, mods };
+    if (window.callbacks.window_iconify_callback) |callback| {
+        callback(window, iconified);
+    }
 }
 
-pub fn CursorPosFun(w: ?*glfw.GLFWwindow, xpos: f64, ypos: f64) callconv(.c) void {
-    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, xpos, ypos };
+pub fn SetWindowMaximizeCallback(window: *Window, function: ?WindowMaximizeFun) void {
+    if (function) {
+        _ = glfw.glfwSetWindowMaximizeCallback(window.window, WindowMaximizeCallback);
+    } else {
+        _ = glfw.glfwSetWindowMaximizeCallback(window.window, null);
+    }
+    window.callbacks.window_maximize_callback = function;
 }
 
-pub fn CursorEnterFun(w: ?*glfw.GLFWwindow, entered: c_int) callconv(.c) void {
+fn WindowMaximizeCallback(w: ?*glfw.GLFWwindow, iconified: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, entered };
+    if (window.callbacks.window_maximize_callback) |callback| {
+        callback(window, iconified);
+    }
 }
 
-pub fn ScrollFun(w: ?*glfw.GLFWwindow, xoffset: f64, yoffset: f64) callconv(.c) void {
-    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, xoffset, yoffset };
+pub fn SetFramebufferSizeCallback(window: *Window, function: ?FramebufferSizeFun) void {
+    if (function) {
+        _ = glfw.glfwSetFramebufferSizeCallback(window.window, FramebufferSizeCallback);
+    } else {
+        _ = glfw.glfwSetFramebufferSizeCallback(window.window, null);
+    }
+    window.callbacks.framebuffer_size_callback = function;
 }
 
-pub fn KeyFun(w: ?*glfw.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.c) void {
+fn FramebufferSizeCallback(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, key, scancode, action, mods };
+    if (window.callbacks.framebuffer_size_callback) |callback| {
+        callback(window, width, height);
+    }
 }
 
-pub fn CharFun(w: ?*glfw.GLFWwindow, codepoint: c_uint) callconv(.c) void {
-    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, codepoint };
+pub fn SetWindowContentScaleCallback(window: *Window, function: ?WindowContentScaleFun) void {
+    if (function) {
+        _ = glfw.glfwSetWindowContentScaleCallback(window.window, WindowContentScaleCallback);
+    } else {
+        _ = glfw.glfwSetWindowContentScaleCallback(window.window, null);
+    }
+    window.callbacks.window_content_scale_callback = function;
 }
 
-pub fn CharmodsFun(w: ?*glfw.GLFWwindow, codepoint: c_uint, mods: c_int) callconv(.c) void {
+fn WindowContentScaleCallback(w: ?*glfw.GLFWwindow, xscale: f32, yscale: f32) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, codepoint, mods };
+    if (window.callbacks.window_content_scale_callback) |callback| {
+        callback(window, xscale, yscale);
+    }
 }
 
-pub fn DropFun(w: ?*glfw.GLFWwindow, path_count: c_int, paths: [*c][*c]const u8) callconv(.c) void {
+pub fn SetMouseButtonCallback(window: *Window, function: ?MouseButtonFun) void {
+    if (function) {
+        _ = glfw.glfwSetMouseButtonCallback(window.window, MouseButtonCallback);
+    } else {
+        _ = glfw.glfwSetMouseButtonCallback(window.window, null);
+    }
+    window.callbacks.mouse_button_callback = function;
+}
+
+fn MouseButtonCallback(w: ?*glfw.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    _ = .{ window, path_count, paths };
+    if (window.callbacks.mouse_button_callback) |callback| {
+        callback(window, button, action, mods);
+    }
+}
+
+pub fn SetCursorPosCallback(window: *Window, function: ?CursorPosFun) void {
+    if (function) {
+        _ = glfw.glfwSetCursorPosCallback(window.window, CursorPosCallback);
+    } else {
+        _ = glfw.glfwSetCursorPosCallback(window.window, null);
+    }
+    window.callbacks.cursor_pos_callback = function;
+}
+
+fn CursorPosCallback(w: ?*glfw.GLFWwindow, xpos: f64, ypos: f64) callconv(.c) void {
+    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+    if (window.callbacks.cursor_pos_callback) |callback| {
+        callback(window, xpos, ypos);
+    }
+}
+
+pub fn SetCursorEnterCallback(window: *Window, function: ?CursorEnterFun) void {
+    if (function) {
+        _ = glfw.glfwSetCursorEnterCallback(window.window, CursorEnterCallback);
+    } else {
+        _ = glfw.glfwSetCursorEnterCallback(window.window, null);
+    }
+    window.callbacks.cursor_enter_callback = function;
+}
+
+fn CursorEnterCallback(w: ?*glfw.GLFWwindow, entered: c_int) callconv(.c) void {
+    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+    if (window.callbacks.cursor_enter_callback) |callback| {
+        callback(window, entered);
+    }
+}
+
+pub fn SetScrollCallback(window: *Window, function: ?ScrollFun) void {
+    if (function) {
+        _ = glfw.glfwSetScrollCallback(window.window, ScrollCallback);
+    } else {
+        _ = glfw.glfwSetScrollCallback(window.window, null);
+    }
+    window.callbacks.scroll_callback = function;
+}
+
+fn ScrollCallback(w: ?*glfw.GLFWwindow, xoffset: f64, yoffset: f64) callconv(.c) void {
+    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+    if (window.callbacks.scroll_callback) |callback| {
+        callback(window, xoffset, yoffset);
+    }
+}
+
+pub fn SetKeyCallback(window: *Window, function: ?KeyFun) void {
+    if (function) {
+        _ = glfw.glfwSetKeyCallback(window.window, KeyCallback);
+    } else {
+        _ = glfw.glfwSetKeyCallback(window.window, null);
+    }
+    window.callbacks.key_callback = function;
+}
+
+fn KeyCallback(w: ?*glfw.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.c) void {
+    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+    if (window.callbacks.key_callback) |callback| {
+        callback(window, key, scancode, action, mods);
+    }
+}
+
+pub fn SetCharCallback(window: *Window, function: ?CharFun) void {
+    if (function) {
+        _ = glfw.glfwSetCharCallback(window.window, CharCallback);
+    } else {
+        _ = glfw.glfwSetCharCallback(window.window, null);
+    }
+    window.callbacks.char_callback = function;
+}
+
+fn CharCallback(w: ?*glfw.GLFWwindow, codepoint: c_uint) callconv(.c) void {
+    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+    if (window.callbacks.char_callback) |callback| {
+        callback(window, codepoint);
+    }
+}
+
+pub fn SetCharmodsCallback(window: *Window, function: ?CharmodsFun) void {
+    if (function) {
+        _ = glfw.glfwSetCharModsCallback(window.window, CharmodsCallback);
+    } else {
+        _ = glfw.glfwSetCharModsCallback(window.window, null);
+    }
+    window.callbacks.charmods_callback = function;
+}
+
+fn CharmodsCallback(w: ?*glfw.GLFWwindow, codepoint: c_uint, mods: c_int) callconv(.c) void {
+    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+    if (window.callbacks.charmods_callback) |callback| {
+        callback(window, codepoint, mods);
+    }
+}
+
+pub fn SetDropCallback(window: *Window, function: ?DropFun) void {
+    if (function) {
+        _ = glfw.glfwSetDropCallback(window.window, DropCallback);
+    } else {
+        _ = glfw.glfwSetDropCallback(window.window, null);
+    }
+    window.callbacks.drop_callback = function;
+}
+
+fn DropCallback(w: ?*glfw.GLFWwindow, path_count: c_int, paths: [*c][*c]const u8) callconv(.c) void {
+    const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+    if (window.callbacks.drop_callback) |callback| {
+        callback(window, path_count, paths);
+    }
 }
