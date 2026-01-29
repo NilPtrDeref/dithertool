@@ -9,15 +9,15 @@ const Texture = ui.Texture;
 const background: ui.Color = .{ .r = 0x3F, .g = 0x3F, .b = 0x3F, .a = 0xFF };
 
 const State = struct {
+    gpa: Allocator,
+    io: Io,
     w: *Window = undefined,
-    texture: Texture = undefined,
-    data: []const u8 = "TEST",
 
-    fn start(state: *State, gpa: Allocator, io: Io) !void {
-        var image = try Image.load(gpa, io, "tm.png");
-        defer image.deinit(gpa);
+    // TODO: Put some lock on texture for upating?
+    texture: ?Texture = undefined,
 
-        state.w = try Window.init(gpa, 800, 640, "Dithertool", .{
+    fn start(state: *State) !void {
+        state.w = try Window.init(state.gpa, 800, 640, "Dithertool", .{
             .error_callback = ErrorCallback,
             .userdata = state,
         });
@@ -32,34 +32,46 @@ const State = struct {
         //     255, 255, 255, 255,
         // };
         // var texture = Texture.init(2, 2, tdata);
-        state.texture = Texture.init(@intCast(image.width), @intCast(image.height), image.data);
-        defer state.texture.deinit();
+        try state.UpdateTexture("tm.png");
+        defer state.texture.?.deinit();
 
         while (!state.w.ShouldClose()) {
             state.w.Clear(background);
-            state.w.DrawTexture(state.texture);
+
+            if (state.texture) |texture| {
+                state.w.DrawTexture(texture);
+            }
+
             state.w.SwapBuffers();
         }
     }
 
-    fn UpdateTexture(state: *State) void {
-        std.log.info("Got here: {s}!", .{state.data});
+    fn UpdateTexture(state: *State, path: []const u8) !void {
+        var image = try Image.load(state.gpa, state.io, path);
+        defer image.deinit(state.gpa);
+
+        const texture = Texture.init(@intCast(image.width), @intCast(image.height), image.data);
+        var old: ?Texture = state.texture;
+        state.texture = texture;
+
+        if (old) |*ot| {
+            ot.deinit();
+        }
+
+        std.log.info("Got here: {s}!", .{path});
     }
 
     fn ErrorCallback(error_code: c_int, description: [*c]const u8) callconv(.c) void {
         std.log.err("Error ({d}): {s}\n", .{ error_code, std.mem.span(description) });
     }
 
-    fn DropCallback(window: *Window, path_count: c_int, paths: [*c][*c]const u8) void {
+    fn DropCallback(window: *Window, _: c_int, paths: [*c][*c]const u8) void {
         const state: *State = @ptrCast(@alignCast(window.userdata.?));
-        state.UpdateTexture();
-        for (0..@intCast(path_count)) |i| {
-            std.log.info("{s}", .{paths[i]});
-        }
+        state.UpdateTexture(std.mem.span(paths[0])) catch @panic("Failed to update texture.");
     }
 };
 
 pub fn main(init: std.process.Init) !void {
-    var state: State = .{};
-    try state.start(init.gpa, init.io);
+    var state: State = .{ .gpa = init.gpa, .io = init.io };
+    try state.start();
 }
