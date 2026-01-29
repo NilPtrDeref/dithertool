@@ -36,7 +36,10 @@
 
 ## Future Development
 
-- [x] Upgrade standard image format
+- [ ] Update UI Code
+  - [ ] Make Userdata/Callbacks easier to use (Think about replacing some callback with an event queue?)
+
+- [ ] Upgrade standard image format
   - [ ] Iterable
   - [ ] Copyable
   - [ ] Editable
