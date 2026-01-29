@@ -38,6 +38,7 @@ pub const DropFun = *const fn (window: *Window, path_count: c_int, paths: [*c][*
 
 pub const InitOptions = struct {
     error_callback: ?ErrorFun = null,
+    userdata: ?*anyopaque = null,
 };
 
 pub const Callbacks = struct {
@@ -66,7 +67,7 @@ gpa: Allocator,
 window: *glfw.GLFWwindow,
 procs: gl.ProcTable,
 callbacks: Callbacks,
-userdata: *anyopaque,
+userdata: ?*anyopaque,
 
 texture_array: *Array,
 texture_buffer: Buffer,
@@ -80,6 +81,7 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     errdefer gpa.destroy(window);
     window.gpa = gpa;
     window.callbacks = .{ .error_callback = options.error_callback };
+    window.userdata = options.userdata;
 
     if (glfw.glfwInit() != glfw.GLFW_TRUE) return error.GlfwInitError;
     errdefer glfw.glfwTerminate();

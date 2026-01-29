@@ -19,9 +19,9 @@ const State = struct {
 
         state.w = try Window.init(gpa, 800, 640, "Dithertool", .{
             .error_callback = ErrorCallback,
+            .userdata = state,
         });
         defer state.w.deinit();
-        state.w.SetUserData(state);
         state.w.SetDropCallback(DropCallback);
 
         // Text texure data
@@ -51,7 +51,7 @@ const State = struct {
     }
 
     fn DropCallback(window: *Window, path_count: c_int, paths: [*c][*c]const u8) void {
-        const state: *State = @ptrCast(@alignCast(window.userdata));
+        const state: *State = @ptrCast(@alignCast(window.userdata.?));
         state.UpdateTexture();
         for (0..@intCast(path_count)) |i| {
             std.log.info("{s}", .{paths[i]});
