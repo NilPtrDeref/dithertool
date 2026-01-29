@@ -6,7 +6,7 @@ const ui = @import("ui");
 const Window = ui.Window;
 const Texture = ui.Texture;
 
-const background: ui.Color = .{ .r = 0x3F, .g = 0x3F, .b = 0x3F, .a = 0xFF };
+const background: ui.Color = .{ .r = 0xFF, .g = 0x3F, .b = 0x3F, .a = 0xFF };
 
 const State = struct {
     gpa: Allocator,
