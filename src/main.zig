@@ -15,13 +15,13 @@ pub fn main(init: std.process.Init) !void {
     var w = try Window.init(init.gpa, 800, 640, "Dithertool");
     defer w.deinit();
 
-    const tdata: []const u8 = &.{
-        0,   255, 0,   255,
-        255, 0,   0,   255,
-        0,   0,   255, 255,
-        255, 255, 255, 255,
-    };
-    var texture = Texture.init(2, 2, tdata);
+    // const tdata: []const u8 = &.{
+    //     0,   255, 0,   255,
+    //     255, 0,   0,   255,
+    //     0,   0,   255, 255,
+    //     255, 255, 255, 255,
+    // };
+    var texture = Texture.init(@intCast(image.width), @intCast(image.height), image.data);
     defer texture.deinit();
 
     while (!w.ShouldClose()) {

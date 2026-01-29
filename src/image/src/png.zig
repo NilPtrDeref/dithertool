@@ -65,6 +65,15 @@ const ColorType = enum(u8) {
     _,
 };
 
+const FilterType = enum(u8) {
+    None = 0,
+    Sub = 1,
+    Up = 2,
+    Average = 3,
+    Paeth = 4,
+    _,
+};
+
 const InterlaceMethod = enum(u8) {
     None = 0,
     Adam7 = 1,
@@ -240,10 +249,57 @@ fn parse_chunk(gpa: Allocator, reader: *Io.Reader, previous: ?ChunkType, header:
     return chunktype;
 }
 
-// TODO: Read data into pixel information and then store.
 fn process_scanlines(header: *Header, sreader: *Io.Reader, output: *[]u8) !void {
     if (header.interlace == .Adam7) return PngError.UnsupportedInterlaceMethod; // FIXME: Add support for Adam7 interlacing
 
-    _ = output;
+    // TODO: Process the colortype properly. Currently hardcoded for truecolor
+    for (0..header.height) |y| {
+        const filter: FilterType = @enumFromInt(try sreader.takeByte());
+        for (0..header.width) |x| {
+            switch (filter) {
+                .None => {
+                    const index = (y * header.width + x) * 4;
+                    try sreader.readSliceAll(output.*[index .. index + 3]);
+                    output.*[index + 3] = 255;
+                },
+                .Sub => {
+                    const index = (y * header.width + x) * 4;
+                    try sreader.readSliceAll(output.*[index .. index + 3]);
+                    output.*[index + 3] = 255;
+                    if (x != 0) {
+                        const previous = (y * header.width + x - 1) * 4;
+                        output.*[index] = output.*[index] -| output.*[previous];
+                        output.*[index] = output.*[index + 1] -| output.*[previous + 1];
+                        output.*[index] = output.*[index + 2] -| output.*[previous + 2];
+                    }
+                },
+                .Up => {
+                    const index = (y * header.width + x) * 4;
+                    try sreader.readSliceAll(output.*[index .. index + 3]);
+                    output.*[index + 3] = 255;
+                    if (y != 0) {
+                        const previous = ((y - 1) * header.width + x) * 4;
+                        output.*[index] = output.*[index] -| output.*[previous];
+                        output.*[index] = output.*[index + 1] -| output.*[previous + 1];
+                        output.*[index] = output.*[index + 2] -| output.*[previous + 2];
+                    }
+                },
+                .Average => {
+                    // FIXME: Actually implement
+                    const index = (y * header.width + x) * 4;
+                    try sreader.readSliceAll(output.*[index .. index + 3]);
+                    output.*[index + 3] = 255;
+                },
+                .Paeth => {
+                    // FIXME: Actually implement
+                    const index = (y * header.width + x) * 4;
+                    try sreader.readSliceAll(output.*[index .. index + 3]);
+                    output.*[index + 3] = 255;
+                },
+                _ => return PngError.InvalidFilterMethod,
+            }
+        }
+    }
+
     _ = try sreader.discardRemaining();
 }
