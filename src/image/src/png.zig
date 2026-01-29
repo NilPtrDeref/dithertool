@@ -130,7 +130,7 @@ pub fn parse(gpa: Allocator, reader: *Io.Reader) !*Image {
     var sreader: Io.Reader = .fixed(scanlines.items);
     var buffer: [std.compress.flate.max_window_len]u8 = undefined;
     var decompressor = std.compress.flate.Decompress.init(&sreader, .zlib, &buffer);
-    try process_scanlines(&header, &decompressor.reader, &image.data);
+    try process_scanlines(gpa, &header, &decompressor.reader, &image.data);
 
     return image;
 }
@@ -249,55 +249,80 @@ fn parse_chunk(gpa: Allocator, reader: *Io.Reader, previous: ?ChunkType, header:
     return chunktype;
 }
 
-fn process_scanlines(header: *Header, sreader: *Io.Reader, output: *[]u8) !void {
+fn process_scanlines(gpa: Allocator, header: *Header, sreader: *Io.Reader, output: *[]u8) !void {
     if (header.interlace == .Adam7) return PngError.UnsupportedInterlaceMethod; // FIXME: Add support for Adam7 interlacing
 
     // TODO: Process the colortype properly. Currently hardcoded for truecolor
+    var current = try gpa.alloc(u8, header.width * 3);
+    defer gpa.free(current);
+    var previous = try gpa.alloc(u8, header.width * 3);
+    defer gpa.free(previous);
+    @memset(previous, 0);
+
     for (0..header.height) |y| {
         const filter: FilterType = @enumFromInt(try sreader.takeByte());
+        try sreader.readSliceAll(current);
         for (0..header.width) |x| {
             switch (filter) {
                 .None => {
                     const index = (y * header.width + x) * 4;
-                    try sreader.readSliceAll(output.*[index .. index + 3]);
+                    const cindex = x * 3;
+                    output.*[index] = current[cindex];
+                    output.*[index + 1] = current[cindex + 1];
+                    output.*[index + 2] = current[cindex + 2];
                     output.*[index + 3] = 255;
                 },
                 .Sub => {
                     const index = (y * header.width + x) * 4;
-                    try sreader.readSliceAll(output.*[index .. index + 3]);
-                    output.*[index + 3] = 255;
+                    const cindex = x * 3;
                     if (x != 0) {
-                        const previous = (y * header.width + x - 1) * 4;
-                        output.*[index] = output.*[index] -| output.*[previous];
-                        output.*[index] = output.*[index + 1] -| output.*[previous + 1];
-                        output.*[index] = output.*[index + 2] -| output.*[previous + 2];
+                        output.*[index] = current[cindex] -| current[cindex - 3];
+                        output.*[index + 1] = current[cindex + 1] -| current[cindex - 2];
+                        output.*[index + 2] = current[cindex + 2] -| current[cindex - 1];
+                        output.*[index + 3] = 255;
+                    } else {
+                        output.*[index] = current[cindex];
+                        output.*[index + 1] = current[cindex + 1];
+                        output.*[index + 2] = current[cindex + 2];
+                        output.*[index + 3] = 255;
                     }
                 },
                 .Up => {
                     const index = (y * header.width + x) * 4;
-                    try sreader.readSliceAll(output.*[index .. index + 3]);
-                    output.*[index + 3] = 255;
-                    if (y != 0) {
-                        const previous = ((y - 1) * header.width + x) * 4;
-                        output.*[index] = output.*[index] -| output.*[previous];
-                        output.*[index] = output.*[index + 1] -| output.*[previous + 1];
-                        output.*[index] = output.*[index + 2] -| output.*[previous + 2];
+                    const cindex = x * 3;
+                    if (x != 0) {
+                        output.*[index] = current[cindex] -| previous[cindex];
+                        output.*[index + 1] = current[cindex + 1] -| previous[cindex + 1];
+                        output.*[index + 2] = current[cindex + 2] -| previous[cindex + 2];
+                        output.*[index + 3] = 255;
+                    } else {
+                        output.*[index] = current[cindex];
+                        output.*[index + 1] = current[cindex + 1];
+                        output.*[index + 2] = current[cindex + 2];
+                        output.*[index + 3] = 255;
                     }
                 },
                 .Average => {
                     // FIXME: Actually implement
                     const index = (y * header.width + x) * 4;
-                    try sreader.readSliceAll(output.*[index .. index + 3]);
+                    const cindex = x * 3;
+                    output.*[index] = current[cindex];
+                    output.*[index + 1] = current[cindex + 1];
+                    output.*[index + 2] = current[cindex + 2];
                     output.*[index + 3] = 255;
                 },
                 .Paeth => {
                     // FIXME: Actually implement
                     const index = (y * header.width + x) * 4;
-                    try sreader.readSliceAll(output.*[index .. index + 3]);
+                    const cindex = x * 3;
+                    output.*[index] = current[cindex];
+                    output.*[index + 1] = current[cindex + 1];
+                    output.*[index + 2] = current[cindex + 2];
                     output.*[index + 3] = 255;
                 },
                 _ => return PngError.InvalidFilterMethod,
             }
+            @memcpy(previous, current);
         }
     }
 
