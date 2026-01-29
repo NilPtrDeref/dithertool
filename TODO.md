@@ -8,7 +8,6 @@
     - [ ] PNG
       - [x] Read critical chunk types
       - [ ] Interpret data to get pixel information
-      - [ ] Interface conversion/wrapping
 
     - [ ] Jpg/Jpeg
 
@@ -29,6 +28,7 @@
 
 - [ ] User Interface (Using OpenGL)
   - [x] Open Window
+  - [x] Basic Texture Rendering
   - [ ] Load image
   - [ ] Present image
   - [ ] Menu

@@ -1,3 +1,7 @@
+/// Implementation derived from the following specification:
+/// https://w3c.github.io/png/
+///
+const Image = @import("Image.zig");
 const std = @import("std");
 const Io = std.Io;
 const Allocator = std.mem.Allocator;
@@ -20,7 +24,7 @@ const PngError = error{
     MissingPalette,
 };
 
-const PngSignature: u64 = 0x89504E470D0A1A0A;
+pub const PngSignature: u64 = 0x89504E470D0A1A0A;
 
 const ChunkType = enum(u32) {
     IHDR = 0x49484452,
@@ -75,50 +79,53 @@ const RGB = struct {
 
 const Palette = std.ArrayList(RGB);
 
-const Self = @This();
-io: Io,
-gpa: Allocator,
-reader: *Io.Reader,
-width: u32,
-height: u32,
-bitdepth: u8,
-colortype: ColorType,
-interlace: InterlaceMethod,
-palette: ?Palette,
+const Header = struct {
+    width: u32 = 0,
+    height: u32 = 0,
+    bitdepth: u8 = 0,
+    colortype: ColorType = undefined,
+    interlace: InterlaceMethod = undefined,
+    palette: ?Palette = null,
+};
 
-pub fn parse(io: Io, gpa: Allocator, reader: *Io.Reader) !*Self {
-    var self = try gpa.create(Self);
-    errdefer gpa.destroy(self);
-    self.io = io;
-    self.gpa = gpa;
-    self.reader = reader;
-    self.width = 0;
-    self.height = 0;
-
+// FIXME:
+pub fn parse(gpa: Allocator, reader: *Io.Reader) !*Image {
     // Check PNG signature
     if (PngSignature != try reader.peekInt(u64, .big)) return PngError.InvalidSignature;
     _ = try reader.takeInt(u64, .big);
 
     var previous: ?ChunkType = null;
-    var data: std.ArrayList(u8) = .empty;
-    defer data.deinit(self.gpa);
+    var header: Header = .{};
+    defer if (header.palette) |*palette| {
+        palette.deinit(gpa);
+    };
+    var scanlines: std.ArrayList(u8) = .empty;
+    defer scanlines.deinit(gpa);
     while (true) {
-        previous = self.parse_chunk(previous, &data) catch |e| {
+        previous = parse_chunk(gpa, reader, previous, &header, &scanlines) catch |e| {
             switch (e) {
                 error.EndOfStream => break,
                 else => return e,
             }
         };
     }
+    if (header.colortype == .Indexed and header.palette == null) return PngError.MissingPalette;
+
+    var image = try gpa.create(Image);
+    errdefer gpa.destroy(image);
+    image.width = header.width;
+    image.height = header.height;
+    image.stride = 4; // RGBA
+    image.data = try gpa.alloc(u8, header.width * header.height * 4);
+    errdefer gpa.free(image.data);
 
     // TODO: Read data into pixel information and then store.
-    var dreader: Io.Reader = .fixed(data.items);
+    var dreader: Io.Reader = .fixed(scanlines.items);
     var buffer: [std.compress.flate.max_window_len]u8 = undefined;
     var decompressor = std.compress.flate.Decompress.init(&dreader, .zlib, &buffer);
     _ = try decompressor.reader.discardRemaining();
 
-    if (self.colortype == .Indexed and self.palette == null) return PngError.MissingPalette;
-    return self;
+    return image;
 }
 
 fn valid_crc(chunktype: ChunkType, data: []const u8, crc: u32) bool {
@@ -128,9 +135,12 @@ fn valid_crc(chunktype: ChunkType, data: []const u8, crc: u32) bool {
     return crc == ecrc.final();
 }
 
-fn parse_chunk(self: *Self, previous: ?ChunkType, data: *std.ArrayList(u8)) !ChunkType {
-    const chunklen = try self.reader.takeInt(u32, .big);
-    const chunktype: ChunkType = @enumFromInt(try self.reader.takeInt(u32, .big));
+// TODO: Clean up this function:
+// 1. Too many params, feels chunky.
+// 2. Reader for header/palette could easily be confused for input reader.
+fn parse_chunk(gpa: Allocator, reader: *Io.Reader, previous: ?ChunkType, header: *Header, data: *std.ArrayList(u8)) !ChunkType {
+    const chunklen = try reader.takeInt(u32, .big);
+    const chunktype: ChunkType = @enumFromInt(try reader.takeInt(u32, .big));
 
     switch (chunktype) {
         _ => return PngError.InvalidChunkType,
@@ -138,58 +148,58 @@ fn parse_chunk(self: *Self, previous: ?ChunkType, data: *std.ArrayList(u8)) !Chu
             if (previous != null) return PngError.DuplicateHeader;
             if (chunklen != 13) return PngError.InvalidHeaderLength;
 
-            const chunk = try self.reader.readAlloc(self.gpa, chunklen);
-            defer self.gpa.free(chunk);
-            if (!valid_crc(.IHDR, chunk, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
-            var reader: Io.Reader = .fixed(chunk);
+            var chunk: [13]u8 = undefined;
+            try reader.readSliceAll(&chunk);
+            if (!valid_crc(.IHDR, &chunk, try reader.takeInt(u32, .big))) return PngError.InvalidCrc;
+            var hreader: Io.Reader = .fixed(&chunk);
 
-            self.width = try reader.takeInt(u32, .big);
-            self.height = try reader.takeInt(u32, .big);
+            header.width = try hreader.takeInt(u32, .big);
+            header.height = try hreader.takeInt(u32, .big);
 
-            self.bitdepth = try reader.takeByte();
-            self.colortype = @enumFromInt(try reader.takeByte());
-            switch (self.colortype) {
-                .Greyscale => switch (self.bitdepth) {
+            header.bitdepth = try hreader.takeByte();
+            header.colortype = @enumFromInt(try hreader.takeByte());
+            switch (header.colortype) {
+                .Greyscale => switch (header.bitdepth) {
                     1, 2, 4, 8, 16 => {},
                     else => return PngError.InvalidBitDepth,
                 },
-                .Truecolor => switch (self.bitdepth) {
+                .Truecolor => switch (header.bitdepth) {
                     8, 16 => {},
                     else => return PngError.InvalidBitDepth,
                 },
-                .Indexed => switch (self.bitdepth) {
+                .Indexed => switch (header.bitdepth) {
                     1, 2, 4, 8 => {},
                     else => return PngError.InvalidBitDepth,
                 },
-                .GreyscaleAlpha => switch (self.bitdepth) {
+                .GreyscaleAlpha => switch (header.bitdepth) {
                     8, 16 => {},
                     else => return PngError.InvalidBitDepth,
                 },
-                .TruecolorAlpha => switch (self.bitdepth) {
+                .TruecolorAlpha => switch (header.bitdepth) {
                     8, 16 => {},
                     else => return PngError.InvalidBitDepth,
                 },
                 _ => return PngError.InvalidColorType,
             }
 
-            if (try reader.takeByte() != 0) return PngError.InvalidCompressionMethod;
-            if (try reader.takeByte() != 0) return PngError.InvalidFilterMethod;
-            self.interlace = @enumFromInt(try reader.takeByte());
-            switch (self.interlace) {
+            if (try hreader.takeByte() != 0) return PngError.InvalidCompressionMethod;
+            if (try hreader.takeByte() != 0) return PngError.InvalidFilterMethod;
+            header.interlace = @enumFromInt(try hreader.takeByte());
+            switch (header.interlace) {
                 .Adam7 => return PngError.UnsupportedInterlaceMethod, // FIXME: Add support for this interlace method
                 _ => return PngError.InvalidInterlaceMethod,
                 else => {},
             }
         },
         .IEND => {
-            if (!valid_crc(.IEND, &.{}, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
+            if (!valid_crc(.IEND, &.{}, try reader.takeInt(u32, .big))) return PngError.InvalidCrc;
         },
         .PLTE => {
-            if (self.palette != null) return PngError.DuplicatePalettes;
+            if (header.palette != null) return PngError.DuplicatePalettes;
             const palettesize = chunklen / 3;
-            switch (self.colortype) {
+            switch (header.colortype) {
                 .Indexed => {
-                    if (palettesize > std.math.pow(u32, 2, self.bitdepth)) return PngError.InvalidPaletteSize;
+                    if (palettesize > std.math.pow(u32, 2, header.bitdepth)) return PngError.InvalidPaletteSize;
                 },
                 .Truecolor, .TruecolorAlpha => {
                     if (palettesize > 256) return PngError.InvalidPaletteSize;
@@ -198,17 +208,17 @@ fn parse_chunk(self: *Self, previous: ?ChunkType, data: *std.ArrayList(u8)) !Chu
             }
             if (chunklen == 0 or @mod(chunklen, 3) != 0) return PngError.InvalidPaletteSize;
 
-            const chunk = try self.reader.readAlloc(self.gpa, chunklen);
-            defer self.gpa.free(chunk);
-            if (!valid_crc(.PLTE, &.{}, try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
-            var reader: Io.Reader = .fixed(chunk);
+            const chunk = try reader.readAlloc(gpa, chunklen);
+            defer gpa.free(chunk);
+            if (!valid_crc(.PLTE, &.{}, try reader.takeInt(u32, .big))) return PngError.InvalidCrc;
+            var preader: Io.Reader = .fixed(chunk);
 
-            self.palette = try .initCapacity(self.gpa, palettesize);
+            header.palette = try .initCapacity(gpa, palettesize);
             for (0..palettesize) |_| {
-                self.palette.?.appendAssumeCapacity(.{
-                    .r = try reader.takeByte(),
-                    .g = try reader.takeByte(),
-                    .b = try reader.takeByte(),
+                header.palette.?.appendAssumeCapacity(.{
+                    .r = try preader.takeByte(),
+                    .g = try preader.takeByte(),
+                    .b = try preader.takeByte(),
                 });
             }
         },
@@ -216,23 +226,19 @@ fn parse_chunk(self: *Self, previous: ?ChunkType, data: *std.ArrayList(u8)) !Chu
             const prelen = data.items.len;
             if (prelen > 0 and previous != .IDAT) return PngError.InvalidChunkSequence;
 
-            self.reader.appendRemaining(self.gpa, data, .limited(chunklen)) catch |e| {
+            reader.appendRemaining(gpa, data, .limited(chunklen)) catch |e| {
                 switch (e) {
                     error.StreamTooLong => {},
                     else => return e,
                 }
             };
-            if (!valid_crc(.IDAT, data.items[prelen..], try self.reader.takeInt(u32, .big))) return PngError.InvalidCrc;
+            if (!valid_crc(.IDAT, data.items[prelen..], try reader.takeInt(u32, .big))) return PngError.InvalidCrc;
         },
         else => {
-            _ = try self.reader.discard(.limited(chunklen));
-            _ = try self.reader.takeInt(u32, .big);
+            _ = try reader.discard(.limited(chunklen));
+            _ = try reader.takeInt(u32, .big);
         },
     }
 
     return chunktype;
-}
-
-pub fn deinit(self: *Self) void {
-    self.gpa.destroy(self);
 }
