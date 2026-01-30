@@ -185,13 +185,14 @@ pub const Event = union(enum) {
     Charmods: struct { codepoint: u32, mods: Mods },
     Drop: struct { window: *Window, paths: ArrayList([]const u8) },
 
-    pub fn deinit(e: *Event) void {
-        switch (e.*) {
-            .Drop => |*d| {
+    pub fn deinit(e: Event) void {
+        switch (e) {
+            .Drop => |d| {
                 for (d.paths.items) |path| {
                     d.window.gpa.free(path);
                 }
-                d.paths.deinit(d.window.gpa);
+                var paths = d.paths;
+                paths.deinit(d.window.gpa);
             },
             else => {},
         }

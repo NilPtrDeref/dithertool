@@ -38,11 +38,9 @@ const State = struct {
         while (!state.w.ShouldClose()) {
             state.w.Clear(background);
 
-            // var e: Event = undefined;
-            while (state.w.events.removeOrNull()) |*e| {
-                // e = state.w.events.removeOrNull() orelse break;
+            while (state.w.events.removeOrNull()) |e| {
                 defer e.deinit();
-                switch (e.*) {
+                switch (e) {
                     .Drop => |drop| {
                         try state.UpdateTexture(drop.paths.items[0]);
                     },
