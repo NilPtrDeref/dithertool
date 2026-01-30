@@ -85,12 +85,12 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     window.texture_array = try Array.init(gpa);
     window.texture_buffer = try window.texture_array.buffer();
     window.texture_buffer.set(&.{
-        -1.0, 1.0,  0.0, 1.0,
-        -1.0, -1.0, 0.0, 0.0,
-        1.0,  -1.0, 1.0, 0.0,
-        -1.0, 1.0,  0.0, 1.0,
-        1.0,  -1.0, 1.0, 0.0,
-        1.0,  1.0,  1.0, 1.0,
+        -1.0, 1.0,  0.0, 0.0,
+        -1.0, -1.0, 0.0, 1.0,
+        1.0,  -1.0, 1.0, 1.0,
+        -1.0, 1.0,  0.0, 0.0,
+        1.0,  -1.0, 1.0, 1.0,
+        1.0,  1.0,  1.0, 0.0,
     }, .StaticDraw);
     window.texture_buffer.attrib_ptr(0, 2, 4 * @sizeOf(f32), 0);
     window.texture_buffer.attrib_ptr(1, 2, 4 * @sizeOf(f32), 2 * @sizeOf(f32));
