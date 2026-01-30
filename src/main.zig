@@ -20,9 +20,9 @@ const State = struct {
     fn start(state: *State) !void {
         state.w = try Window.init(state.gpa, 800, 640, "Dithertool", .{
             .error_callback = ErrorCallback,
+            .event_capabilities = .{ .Key = true, .Drop = true },
         });
         defer state.w.deinit();
-        state.w.SetEventCapabilities(.{ .Key = true, .Drop = true });
 
         // Text texure data
         // const tdata: []const u8 = &.{

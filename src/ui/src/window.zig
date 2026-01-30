@@ -26,6 +26,7 @@ pub const ErrorFun = *const fn (error_code: c_int, description: [*c]const u8) ca
 pub const InitOptions = struct {
     error_callback: ?ErrorFun = null,
     event_capacity: u32 = 1024,
+    event_capabilities: ?EventCapabilities = null,
 };
 
 const Window = @This();
@@ -63,6 +64,9 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     glfw.glfwSwapInterval(1);
     glfw.glfwSetWindowUserPointer(window.window, window);
     _ = glfw.glfwSetWindowSizeCallback(window.window, WindowSizeCallback);
+    if (options.event_capabilities != null) {
+        window.SetEventCapabilities(options.event_capabilities.?);
+    }
 
     // Initialize the procedure table.
     if (!window.procs.init(glfw.glfwGetProcAddress)) return error.InitFailed;
@@ -144,7 +148,7 @@ pub fn SetErrorCallback(_: *Window, function: ?ErrorFun) void {
     _ = glfw.glfwSetErrorCallback(function);
 }
 
-pub const EventOptions = struct {
+pub const EventCapabilities = struct {
     WindowPos: ?bool = null,
     WindowSize: ?bool = null,
     WindowClose: ?bool = null,
@@ -164,7 +168,7 @@ pub const EventOptions = struct {
     Drop: ?bool = null,
 };
 
-pub fn SetEventCapabilities(window: *Window, events: EventOptions) void {
+pub fn SetEventCapabilities(window: *Window, events: EventCapabilities) void {
     if (events.WindowPos) |enable| {
         if (enable) {
             _ = glfw.glfwSetWindowPosCallback(window.window, WindowPosCallback);
