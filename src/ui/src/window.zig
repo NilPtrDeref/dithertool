@@ -143,6 +143,8 @@ pub fn DrawTexture(window: Window, texture: Texture, src: Rect, dest: Rect) void
 
     // TODO: Move into program?
     gl.Uniform1i(gl.GetUniformLocation(window.texture_program.pid, "uTexture"), @intCast(texture.tunit - Texture.InitialTexture));
+
+    // TODO: Decide if the buffer needs to be altered or if I can pass transforms to accomplish this.
     _ = .{ src, dest };
     // gl.Uniform4f(
     //     gl.GetUniformLocation(window.texture_program.pid, "sTransform"),
