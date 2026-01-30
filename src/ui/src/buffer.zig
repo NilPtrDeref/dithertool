@@ -30,6 +30,10 @@ pub const Array = struct {
         arr.gpa.destroy(arr);
     }
 
+    pub fn bind(arr: *Array) void {
+        gl.BindVertexArray(arr.vao);
+    }
+
     pub fn buffer(arr: *Array) !Buffer {
         var buf: Buffer = .{ .vao = arr.vao };
         gl.GenBuffers(1, @ptrCast(&buf.vbo));

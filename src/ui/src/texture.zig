@@ -12,10 +12,12 @@ const MaxTextures: u32 = glfw.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS;
 const Texture = @This();
 tid: u32 = 0,
 tunit: u32,
+width: u32,
+height: u32,
 
 // TODO: Take in options struct for things like texture type, TexParameter, etc.
 pub fn init(width: i32, height: i32, data: []const u8) Texture {
-    var texture: Texture = .{ .tunit = CurrentTexture };
+    var texture: Texture = .{ .tunit = CurrentTexture, .width = @intCast(width), .height = @intCast(height) };
     CurrentTexture += 1;
 
     gl.GenTextures(1, @ptrCast(&texture.tid));

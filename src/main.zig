@@ -50,7 +50,11 @@ const State = struct {
             }
 
             if (state.texture) |texture| {
-                state.w.DrawTexture(texture);
+                state.w.DrawTexture(
+                    texture,
+                    .{ .x = 0, .y = 0, .w = @floatFromInt(texture.width), .h = @floatFromInt(texture.height) },
+                    .{ .x = 0, .y = 0, .w = @floatFromInt(state.w.width), .h = @floatFromInt(state.w.height) },
+                );
             }
 
             state.w.SwapBuffers();

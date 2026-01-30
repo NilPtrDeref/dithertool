@@ -1,6 +1,7 @@
 const std = @import("std");
 const root = @import("root.zig");
 const Color = root.Color;
+const Rect = root.Rect;
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const gl = @import("gl");
@@ -36,6 +37,9 @@ procs: gl.ProcTable,
 events: EventQueue,
 window_size_events: bool,
 
+width: u32,
+height: u32,
+
 texture_array: *Array,
 texture_buffer: Buffer,
 texture_program: Program,
@@ -47,6 +51,8 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     var window = try gpa.create(Window);
     errdefer gpa.destroy(window);
     window.gpa = gpa;
+    window.width = width;
+    window.height = height;
     window.events = .empty;
     try window.events.ensureTotalCapacity(gpa, options.event_capacity);
     window.window_size_events = false;
@@ -129,7 +135,7 @@ pub fn SwapBuffers(window: *Window) void {
 }
 
 // FIXME: Expand to take src/dest rectangles.
-pub fn DrawTexture(window: Window, texture: Texture) void {
+pub fn DrawTexture(window: Window, texture: Texture, src: Rect, dest: Rect) void {
     window.texture_program.use();
     window.texture_buffer.bind();
     texture.set_active();
@@ -137,9 +143,15 @@ pub fn DrawTexture(window: Window, texture: Texture) void {
 
     // TODO: Move into program?
     gl.Uniform1i(gl.GetUniformLocation(window.texture_program.pid, "uTexture"), @intCast(texture.tunit - Texture.InitialTexture));
+    _ = .{ src, dest };
+    // gl.Uniform4f(
+    //     gl.GetUniformLocation(window.texture_program.pid, "sTransform"),
+    // );
+    // gl.Uniform4f(
+    //     gl.GetUniformLocation(window.texture_program.pid, "dTransform"),
+    // );
 
-    // TODO: Move into Array?
-    gl.BindVertexArray(window.texture_array.vao);
+    window.texture_array.bind();
 
     gl.DrawArrays(glfw.GL_TRIANGLES, 0, 6);
 }
@@ -312,6 +324,8 @@ fn WindowSizeCallback(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) callcon
     gl.Viewport(0, 0, width, height);
 
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
+    window.width = @intCast(width);
+    window.height = @intCast(height);
     if (window.window_size_events) {
         window.events.pushBackBounded(.{ .WindowSize = .{ .width = @intCast(width), .height = @intCast(height) } }) catch {};
     }
