@@ -25,6 +25,7 @@ pub const ErrorFun = *const fn (error_code: c_int, description: [*c]const u8) ca
 
 pub const InitOptions = struct {
     error_callback: ?ErrorFun = null,
+    event_capacity: u32 = 1024,
 };
 
 const Window = @This();
@@ -45,7 +46,8 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     var window = try gpa.create(Window);
     errdefer gpa.destroy(window);
     window.gpa = gpa;
-    window.events = EventQueue.init(gpa, {});
+    window.events = .empty;
+    try window.events.ensureTotalCapacity(gpa, options.event_capacity);
     window.window_size_events = false;
 
     if (glfw.glfwInit() != glfw.GLFW_TRUE) return error.GlfwInitError;
@@ -95,7 +97,7 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
 }
 
 pub fn deinit(window: *Window) void {
-    window.events.deinit();
+    window.events.deinit(window.gpa);
     window.texture_program.deinit();
     window.texture_array.deinit();
     gl.makeProcTableCurrent(null);
@@ -142,21 +144,163 @@ pub fn SetErrorCallback(_: *Window, function: ?ErrorFun) void {
     _ = glfw.glfwSetErrorCallback(function);
 }
 
-pub fn WindowPosEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetWindowPosCallback(window.window, WindowPosCallback);
-    } else {
-        _ = glfw.glfwSetWindowPosCallback(window.window, null);
+pub const EventOptions = struct {
+    WindowPos: ?bool = null,
+    WindowSize: ?bool = null,
+    WindowClose: ?bool = null,
+    WindowRefresh: ?bool = null,
+    WindowFocus: ?bool = null,
+    WindowIconify: ?bool = null,
+    WindowMaximize: ?bool = null,
+    FrambufferSize: ?bool = null,
+    WindowContentScale: ?bool = null,
+    MouseButton: ?bool = null,
+    CursorPos: ?bool = null,
+    CursorEnter: ?bool = null,
+    Scroll: ?bool = null,
+    Key: ?bool = null,
+    Char: ?bool = null,
+    CharMods: ?bool = null,
+    Drop: ?bool = null,
+};
+
+pub fn SetEventCapabilities(window: *Window, events: EventOptions) void {
+    if (events.WindowPos) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetWindowPosCallback(window.window, WindowPosCallback);
+        } else {
+            _ = glfw.glfwSetWindowPosCallback(window.window, null);
+        }
+    }
+
+    if (events.WindowSize) |enable| {
+        window.window_size_events = enable;
+    }
+
+    if (events.WindowClose) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetWindowCloseCallback(window.window, WindowCloseCallback);
+        } else {
+            _ = glfw.glfwSetWindowCloseCallback(window.window, null);
+        }
+    }
+
+    if (events.WindowRefresh) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetWindowRefreshCallback(window.window, WindowRefreshCallback);
+        } else {
+            _ = glfw.glfwSetWindowRefreshCallback(window.window, null);
+        }
+    }
+
+    if (events.WindowFocus) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetWindowFocusCallback(window.window, WindowFocusCallback);
+        } else {
+            _ = glfw.glfwSetWindowFocusCallback(window.window, null);
+        }
+    }
+
+    if (events.WindowIconify) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetWindowIconifyCallback(window.window, WindowIconifyCallback);
+        } else {
+            _ = glfw.glfwSetWindowIconifyCallback(window.window, null);
+        }
+    }
+
+    if (events.WindowMaximize) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetWindowMaximizeCallback(window.window, WindowMaximizeCallback);
+        } else {
+            _ = glfw.glfwSetWindowMaximizeCallback(window.window, null);
+        }
+    }
+
+    if (events.FrambufferSize) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetFramebufferSizeCallback(window.window, FramebufferSizeCallback);
+        } else {
+            _ = glfw.glfwSetFramebufferSizeCallback(window.window, null);
+        }
+    }
+
+    if (events.WindowContentScale) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetWindowContentScaleCallback(window.window, WindowContentScaleCallback);
+        } else {
+            _ = glfw.glfwSetWindowContentScaleCallback(window.window, null);
+        }
+    }
+
+    if (events.MouseButton) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetMouseButtonCallback(window.window, MouseButtonCallback);
+        } else {
+            _ = glfw.glfwSetMouseButtonCallback(window.window, null);
+        }
+    }
+
+    if (events.CursorPos) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetCursorPosCallback(window.window, CursorPosCallback);
+        } else {
+            _ = glfw.glfwSetCursorPosCallback(window.window, null);
+        }
+    }
+
+    if (events.CursorEnter) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetCursorEnterCallback(window.window, CursorEnterCallback);
+        } else {
+            _ = glfw.glfwSetCursorEnterCallback(window.window, null);
+        }
+    }
+
+    if (events.Scroll) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetScrollCallback(window.window, ScrollCallback);
+        } else {
+            _ = glfw.glfwSetScrollCallback(window.window, null);
+        }
+    }
+
+    if (events.Key) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetKeyCallback(window.window, KeyCallback);
+        } else {
+            _ = glfw.glfwSetKeyCallback(window.window, null);
+        }
+    }
+
+    if (events.Char) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetCharCallback(window.window, CharCallback);
+        } else {
+            _ = glfw.glfwSetCharCallback(window.window, null);
+        }
+    }
+
+    if (events.CharMods) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetCharModsCallback(window.window, CharModsCallback);
+        } else {
+            _ = glfw.glfwSetCharModsCallback(window.window, null);
+        }
+    }
+
+    if (events.Drop) |enable| {
+        if (enable) {
+            _ = glfw.glfwSetDropCallback(window.window, DropCallback);
+        } else {
+            _ = glfw.glfwSetDropCallback(window.window, null);
+        }
     }
 }
 
 fn WindowPosCallback(w: ?*glfw.GLFWwindow, xpos: c_int, ypos: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .WindowPos = .{ .xpos = @intCast(xpos), .ypos = @intCast(ypos) } }) catch {};
-}
-
-pub fn WindowSizeEvents(window: *Window, enable: bool) void {
-    window.window_size_events = enable;
+    window.events.pushBackBounded(.{ .WindowPos = .{ .xpos = @intCast(xpos), .ypos = @intCast(ypos) } }) catch {};
 }
 
 fn WindowSizeCallback(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.c) void {
@@ -165,168 +309,72 @@ fn WindowSizeCallback(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) callcon
 
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
     if (window.window_size_events) {
-        window.events.add(.{ .WindowSize = .{ .width = @intCast(width), .height = @intCast(height) } }) catch {};
-    }
-}
-
-pub fn WindowCloseEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetWindowCloseCallback(window.window, WindowCloseCallback);
-    } else {
-        _ = glfw.glfwSetWindowCloseCallback(window.window, null);
+        window.events.pushBackBounded(.{ .WindowSize = .{ .width = @intCast(width), .height = @intCast(height) } }) catch {};
     }
 }
 
 fn WindowCloseCallback(w: ?*glfw.GLFWwindow) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .WindowClose = {} }) catch {};
-}
-
-pub fn WindowRefreshEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetWindowRefreshCallback(window.window, WindowRefreshCallback);
-    } else {
-        _ = glfw.glfwSetWindowRefreshCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .WindowClose = {} }) catch {};
 }
 
 fn WindowRefreshCallback(w: ?*glfw.GLFWwindow) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .WindowRefresh = {} }) catch {};
-}
-
-pub fn WindowFocusEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetWindowFocusCallback(window.window, WindowFocusCallback);
-    } else {
-        _ = glfw.glfwSetWindowFocusCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .WindowRefresh = {} }) catch {};
 }
 
 fn WindowFocusCallback(w: ?*glfw.GLFWwindow, focused: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .WindowFocus = .{ .focused = focused == glfw.GLFW_TRUE } }) catch {};
-}
-
-pub fn WindowIconifyEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetWindowIconifyCallback(window.window, WindowIconifyCallback);
-    } else {
-        _ = glfw.glfwSetWindowIconifyCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .WindowFocus = .{ .focused = focused == glfw.GLFW_TRUE } }) catch {};
 }
 
 fn WindowIconifyCallback(w: ?*glfw.GLFWwindow, iconified: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .WindowIconify = .{ .iconified = iconified == glfw.GLFW_TRUE } }) catch {};
-}
-
-pub fn WindowMaximizeEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetWindowMaximizeCallback(window.window, WindowMaximizeCallback);
-    } else {
-        _ = glfw.glfwSetWindowMaximizeCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .WindowIconify = .{ .iconified = iconified == glfw.GLFW_TRUE } }) catch {};
 }
 
 fn WindowMaximizeCallback(w: ?*glfw.GLFWwindow, iconified: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .WindowMaximize = .{ .iconified = iconified == glfw.GLFW_TRUE } }) catch {};
-}
-
-pub fn FramebufferSizeEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetFramebufferSizeCallback(window.window, FramebufferSizeCallback);
-    } else {
-        _ = glfw.glfwSetFramebufferSizeCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .WindowMaximize = .{ .iconified = iconified == glfw.GLFW_TRUE } }) catch {};
 }
 
 fn FramebufferSizeCallback(w: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .FramebufferSize = .{ .width = @intCast(width), .height = @intCast(height) } }) catch {};
-}
-
-pub fn WindowContentScaleEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetWindowContentScaleCallback(window.window, WindowContentScaleCallback);
-    } else {
-        _ = glfw.glfwSetWindowContentScaleCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .FramebufferSize = .{ .width = @intCast(width), .height = @intCast(height) } }) catch {};
 }
 
 fn WindowContentScaleCallback(w: ?*glfw.GLFWwindow, xscale: f32, yscale: f32) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .WindowContentScale = .{ .xscale = xscale, .yscale = yscale } }) catch {};
-}
-
-pub fn MouseButtonEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetMouseButtonCallback(window.window, MouseButtonCallback);
-    } else {
-        _ = glfw.glfwSetMouseButtonCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .WindowContentScale = .{ .xscale = xscale, .yscale = yscale } }) catch {};
 }
 
 fn MouseButtonCallback(w: ?*glfw.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .MouseButton = .{
+    window.events.pushBackBounded(.{ .MouseButton = .{
         .button = @enumFromInt(button),
         .action = @enumFromInt(action),
         .mods = @bitCast(@as(u32, @intCast(mods))),
     } }) catch {};
 }
 
-pub fn CursorPosEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetCursorPosCallback(window.window, CursorPosCallback);
-    } else {
-        _ = glfw.glfwSetCursorPosCallback(window.window, null);
-    }
-}
-
 fn CursorPosCallback(w: ?*glfw.GLFWwindow, xpos: f64, ypos: f64) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .CursorPos = .{ .xpos = xpos, .ypos = ypos } }) catch {};
-}
-
-pub fn CursorEnterEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetCursorEnterCallback(window.window, CursorEnterCallback);
-    } else {
-        _ = glfw.glfwSetCursorEnterCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .CursorPos = .{ .xpos = xpos, .ypos = ypos } }) catch {};
 }
 
 fn CursorEnterCallback(w: ?*glfw.GLFWwindow, entered: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .CursorEnter = .{ .entered = entered == glfw.GLFW_TRUE } }) catch {};
-}
-
-pub fn ScrollEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetScrollCallback(window.window, ScrollCallback);
-    } else {
-        _ = glfw.glfwSetScrollCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .CursorEnter = .{ .entered = entered == glfw.GLFW_TRUE } }) catch {};
 }
 
 fn ScrollCallback(w: ?*glfw.GLFWwindow, xoffset: f64, yoffset: f64) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .Scroll = .{ .xoffset = xoffset, .yoffset = yoffset } }) catch {};
-}
-
-pub fn KeyCallbackEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetKeyCallback(window.window, KeyCallback);
-    } else {
-        _ = glfw.glfwSetKeyCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .Scroll = .{ .xoffset = xoffset, .yoffset = yoffset } }) catch {};
 }
 
 fn KeyCallback(w: ?*glfw.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .Key = .{
+    window.events.pushBackBounded(.{ .Key = .{
         .key = @enumFromInt(key),
         .scancode = @intCast(scancode),
         .action = @enumFromInt(action),
@@ -334,38 +382,14 @@ fn KeyCallback(w: ?*glfw.GLFWwindow, key: c_int, scancode: c_int, action: c_int,
     } }) catch {};
 }
 
-pub fn CharCallbackEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetCharCallback(window.window, CharCallback);
-    } else {
-        _ = glfw.glfwSetCharCallback(window.window, null);
-    }
-}
-
 fn CharCallback(w: ?*glfw.GLFWwindow, codepoint: c_uint) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .Char = .{ .codepoint = @intCast(codepoint) } }) catch {};
+    window.events.pushBackBounded(.{ .Char = .{ .codepoint = @intCast(codepoint) } }) catch {};
 }
 
-pub fn CharmodsCallbackEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetCharModsCallback(window.window, CharmodsCallback);
-    } else {
-        _ = glfw.glfwSetCharModsCallback(window.window, null);
-    }
-}
-
-fn CharmodsCallback(w: ?*glfw.GLFWwindow, codepoint: c_uint, mods: c_int) callconv(.c) void {
+fn CharModsCallback(w: ?*glfw.GLFWwindow, codepoint: c_uint, mods: c_int) callconv(.c) void {
     const window: *Window = @ptrCast(@alignCast(glfw.glfwGetWindowUserPointer(w)));
-    window.events.add(.{ .Charmods = .{ .codepoint = @intCast(codepoint), .mods = @bitCast(@as(u32, @intCast(mods))) } }) catch {};
-}
-
-pub fn DropCallbackEvents(window: *Window, enable: bool) void {
-    if (enable) {
-        _ = glfw.glfwSetDropCallback(window.window, DropCallback);
-    } else {
-        _ = glfw.glfwSetDropCallback(window.window, null);
-    }
+    window.events.pushBackBounded(.{ .Charmods = .{ .codepoint = @intCast(codepoint), .mods = @bitCast(@as(u32, @intCast(mods))) } }) catch {};
 }
 
 fn DropCallback(w: ?*glfw.GLFWwindow, path_count: c_int, paths: [*c][*c]const u8) callconv(.c) void {
@@ -379,7 +403,7 @@ fn DropCallback(w: ?*glfw.GLFWwindow, path_count: c_int, paths: [*c][*c]const u8
         };
     }
     var e: Event = .{ .Drop = .{ .window = window, .paths = list } };
-    window.events.add(e) catch {
+    window.events.pushBackBounded(e) catch {
         e.deinit();
     };
 }

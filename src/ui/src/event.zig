@@ -1,7 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
-const PriorityQueue = std.PriorityQueue;
+const Deque = std.Deque;
 const Order = std.math.Order;
 const Window = @import("window.zig");
 const glfw = @cImport({
@@ -160,11 +160,7 @@ pub const Mods = packed struct(u32) {
     _reserved: u26 = 0,
 };
 
-fn cmp(_: void, _: Event, _: Event) Order {
-    return .eq;
-}
-
-pub const EventQueue = PriorityQueue(Event, void, cmp);
+pub const EventQueue = Deque(Event);
 
 pub const Event = union(enum) {
     WindowPos: struct { xpos: u32, ypos: u32 },

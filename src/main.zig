@@ -22,7 +22,7 @@ const State = struct {
             .error_callback = ErrorCallback,
         });
         defer state.w.deinit();
-        state.w.DropCallbackEvents(true);
+        state.w.SetEventCapabilities(.{ .Key = true, .Drop = true });
 
         // Text texure data
         // const tdata: []const u8 = &.{
@@ -38,11 +38,14 @@ const State = struct {
         while (!state.w.ShouldClose()) {
             state.w.Clear(background);
 
-            while (state.w.events.removeOrNull()) |e| {
+            while (state.w.events.popFront()) |e| {
                 defer e.deinit();
                 switch (e) {
                     .Drop => |drop| {
                         try state.UpdateTexture(drop.paths.items[0]);
+                    },
+                    .Key => |key| {
+                        std.log.info("{any}", .{key.key});
                     },
                     else => {},
                 }
