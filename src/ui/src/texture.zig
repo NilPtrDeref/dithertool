@@ -5,7 +5,7 @@ const glfw = @cImport({
     @cInclude("GLFW/glfw3.h");
 });
 
-const InitialTexture: u32 = glfw.GL_TEXTURE0;
+pub const InitialTexture: u32 = glfw.GL_TEXTURE0;
 var CurrentTexture: u32 = glfw.GL_TEXTURE0;
 const MaxTextures: u32 = glfw.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS;
 
@@ -30,6 +30,7 @@ pub fn init(width: i32, height: i32, data: []const u8) Texture {
     gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MIN_FILTER, glfw.GL_NEAREST);
     gl.TexParameteri(glfw.GL_TEXTURE_2D, glfw.GL_TEXTURE_MAG_FILTER, glfw.GL_NEAREST);
 
+    gl.PixelStorei(glfw.GL_UNPACK_ALIGNMENT, 1);
     gl.TexImage2D(glfw.GL_TEXTURE_2D, 0, glfw.GL_RGBA, width, height, 0, glfw.GL_RGBA, glfw.GL_UNSIGNED_BYTE, data.ptr);
     gl.GenerateMipmap(glfw.GL_TEXTURE_2D);
 

@@ -167,7 +167,7 @@ pub fn DrawTexture(window: Window, texture: Texture) void {
     texture.bind();
 
     // TODO: Move into program?
-    gl.Uniform1i(gl.GetUniformLocation(window.texture_program.pid, "uTexture"), @intCast(texture.tunit));
+    gl.Uniform1i(gl.GetUniformLocation(window.texture_program.pid, "uTexture"), @intCast(texture.tunit - Texture.InitialTexture));
 
     // TODO: Move into Array?
     gl.BindVertexArray(window.texture_array.vao);
