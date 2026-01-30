@@ -13,8 +13,6 @@ const State = struct {
     gpa: Allocator,
     io: Io,
     w: *Window = undefined,
-
-    // TODO: Put some lock on texture for upating?
     texture: ?Texture = undefined,
 
     fn start(state: *State) !void {
