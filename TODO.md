@@ -34,9 +34,6 @@
   - [ ] Menu
   - [ ] Live dither image
 
-- [ ] Update UI Code \[High\]
-  - [ ] Make Userdata/Callbacks easier to use (Think about replacing some callback with an event queue?)
-
 ## Future Development
 
 - [ ] Upgrade standard image format
