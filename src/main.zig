@@ -61,7 +61,10 @@ const State = struct {
     }
 
     fn UpdateTexture(state: *State, path: []const u8) !void {
-        var img = try image.load(state.gpa, path);
+        var img = image.load(state.gpa, path) catch |e| {
+            std.log.info("{s}", .{image.failure_reason()});
+            return e;
+        };
         defer img.deinit(state.gpa);
 
         const texture = Texture.init(@intCast(img.width), @intCast(img.height), img.data);

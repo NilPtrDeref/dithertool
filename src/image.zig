@@ -32,6 +32,10 @@ pub fn load(gpa: Allocator, path: []const u8) !*Image {
     return image;
 }
 
+pub fn failure_reason() []const u8 {
+    return std.mem.span(stbi.stbi_failure_reason());
+}
+
 pub fn deinit(image: *Image, gpa: Allocator) void {
     stbi.stbi_image_free(image.data.ptr);
     gpa.destroy(image);
