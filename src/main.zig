@@ -1,7 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Io = std.Io;
-const Image = @import("image");
+const image = @import("image.zig");
 const ui = @import("ui");
 const Window = ui.Window;
 const Texture = ui.Texture;
@@ -11,7 +11,6 @@ const background: ui.Color = .{ .r = 0xFF, .g = 0x3F, .b = 0x3F, .a = 0xFF };
 
 const State = struct {
     gpa: Allocator,
-    io: Io,
     w: *Window = undefined,
     texture: ?Texture = undefined,
 
@@ -62,10 +61,10 @@ const State = struct {
     }
 
     fn UpdateTexture(state: *State, path: []const u8) !void {
-        var image = try Image.load(state.gpa, state.io, path);
-        defer image.deinit(state.gpa);
+        var img = try image.load(state.gpa, path);
+        defer img.deinit(state.gpa);
 
-        const texture = Texture.init(@intCast(image.width), @intCast(image.height), image.data);
+        const texture = Texture.init(@intCast(img.width), @intCast(img.height), img.data);
         var old: ?Texture = state.texture;
         state.texture = texture;
 
@@ -82,6 +81,6 @@ const State = struct {
 };
 
 pub fn main(init: std.process.Init) !void {
-    var state: State = .{ .gpa = init.gpa, .io = init.io };
+    var state: State = .{ .gpa = init.gpa };
     try state.start();
 }

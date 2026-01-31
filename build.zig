@@ -3,18 +3,20 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const image = b.dependency("image", .{}).module("image");
-    const ui = b.dependency("ui", .{}).module("ui");
-
     const exe = b.addExecutable(.{
         .name = "dithertool",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
         }),
+        .use_llvm = true,
     });
-    exe.root_module.addImport("image", image);
+    exe.root_module.addCSourceFile(.{ .file = b.path("src/stb/stb_image.c") });
+    exe.root_module.addIncludePath(b.path("src/stb/"));
+
+    const ui = b.dependency("ui", .{}).module("ui");
     exe.root_module.addImport("ui", ui);
     b.installArtifact(exe);
 
