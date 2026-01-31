@@ -42,7 +42,7 @@ const State = struct {
                         try state.UpdateTexture(drop.paths.items[0]);
                     },
                     .Key => |key| {
-                        std.log.info("{any}", .{key.key});
+                        if (key.key == .Q) return;
                     },
                     else => {},
                 }
