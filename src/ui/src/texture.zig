@@ -47,10 +47,21 @@ pub fn index(texture: Texture) u32 {
     return texture.tunit - InitialTexture;
 }
 
+pub fn update(texture: Texture, data: []const u8) void {
+    texture.bind();
+    gl.TexSubImage2D(glfw.GL_TEXTURE_2D, 0, 0, 0, texture.width, texture.height, glfw.GL_RGBA, glfw.GL_UNSIGNED_BYTE, data.ptr);
+    gl.GenerateMipmap(glfw.GL_TEXTURE_2D);
+    texture.unbind();
+}
+
 pub fn set_active(texture: Texture) void {
     gl.ActiveTexture(texture.tunit);
 }
 
 pub fn bind(texture: Texture) void {
     gl.BindTexture(glfw.GL_TEXTURE_2D, texture.tid);
+}
+
+pub fn unbind(_: Texture) void {
+    gl.BindTexture(glfw.GL_TEXTURE_2D, 0);
 }
