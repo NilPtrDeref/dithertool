@@ -35,6 +35,66 @@ pub const Program = struct {
     pub fn use(program: Program) void {
         gl.UseProgram(program.pid);
     }
+
+    pub fn Uniform1f(program: Program, name: [*c]const u8, v1: f32) void {
+        program.use();
+        gl.Uniform1f(gl.GetUniformLocation(program.pid, name), v1);
+    }
+
+    pub fn Uniform2f(program: Program, name: [*c]const u8, v1: f32, v2: f32) void {
+        program.use();
+        gl.Uniform2f(gl.GetUniformLocation(program.pid, name), v1, v2);
+    }
+
+    pub fn Uniform3f(program: Program, name: [*c]const u8, v1: f32, v2: f32, v3: f32) void {
+        program.use();
+        gl.Uniform3f(gl.GetUniformLocation(program.pid, name), v1, v2, v3);
+    }
+
+    pub fn Uniform4f(program: Program, name: [*c]const u8, v1: f32, v2: f32, v3: f32, v4: f32) void {
+        program.use();
+        gl.Uniform4f(gl.GetUniformLocation(program.pid, name), v1, v2, v3, v4);
+    }
+
+    pub fn Uniform1i(program: Program, name: [*c]const u8, v1: i32) void {
+        program.use();
+        gl.Uniform1i(gl.GetUniformLocation(program.pid, name), v1);
+    }
+
+    pub fn Uniform2i(program: Program, name: [*c]const u8, v1: i32, v2: i32) void {
+        program.use();
+        gl.Uniform2i(gl.GetUniformLocation(program.pid, name), v1, v2);
+    }
+
+    pub fn Uniform3i(program: Program, name: [*c]const u8, v1: i32, v2: i32, v3: i32) void {
+        program.use();
+        gl.Uniform3i(gl.GetUniformLocation(program.pid, name), v1, v2, v3);
+    }
+
+    pub fn Uniform4i(program: Program, name: [*c]const u8, v1: i32, v2: i32, v3: i32, v4: i32) void {
+        program.use();
+        gl.Uniform4i(gl.GetUniformLocation(program.pid, name), v1, v2, v3, v4);
+    }
+
+    pub fn Uniform1u(program: Program, name: [*c]const u8, v1: u32) void {
+        program.use();
+        gl.Uniform1u(gl.GetUniformLocation(program.pid, name), v1);
+    }
+
+    pub fn Uniform2u(program: Program, name: [*c]const u8, v1: u32, v2: u32) void {
+        program.use();
+        gl.Uniform2u(gl.GetUniformLocation(program.pid, name), v1, v2);
+    }
+
+    pub fn Uniform3u(program: Program, name: [*c]const u8, v1: u32, v2: u32, v3: u32) void {
+        program.use();
+        gl.Uniform3u(gl.GetUniformLocation(program.pid, name), v1, v2, v3);
+    }
+
+    pub fn Uniform4u(program: Program, name: [*c]const u8, v1: u32, v2: u32, v3: u32, v4: u32) void {
+        program.use();
+        gl.Uniform4u(gl.GetUniformLocation(program.pid, name), v1, v2, v3, v4);
+    }
 };
 
 pub const Shader = struct {

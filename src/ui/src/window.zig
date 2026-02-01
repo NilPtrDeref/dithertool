@@ -170,8 +170,7 @@ pub fn DrawTexture2D(window: Window, texture: Texture, src: ?Rect, dest: Rect) v
     texture.set_active();
     texture.bind();
 
-    // TODO: Move into program?
-    gl.Uniform1i(gl.GetUniformLocation(window.texture_program.pid, "Texture"), @intCast(texture.index()));
+    window.texture_program.Uniform1i("Texture", @intCast(texture.index()));
 
     gl.DrawArrays(glfw.GL_TRIANGLE_STRIP, 0, 4);
 }
