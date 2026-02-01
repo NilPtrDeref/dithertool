@@ -16,6 +16,7 @@
   - [x] Present image
   - [ ] Scroll to zoom
   - [ ] Drag to move image
+  - [ ] H/L to go to previous/next image in directory?
   - [ ] Menu
   - [ ] Live dither image
 
