@@ -10,7 +10,6 @@ const glfw = @cImport({
 });
 const buffer = @import("buffer.zig");
 const Array = buffer.Array;
-const Buffer = buffer.Buffer;
 const shader = @import("shader.zig");
 const Program = shader.Program;
 const Texture = @import("texture.zig");
@@ -40,8 +39,7 @@ window_size_events: bool,
 width: u32,
 height: u32,
 
-texture_array: *Array,
-texture_buffer: Buffer,
+texture_array: Array,
 texture_program: Program,
 
 /// It is undefined behavior to create more that a single Window.
@@ -82,19 +80,19 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     gl.Viewport(0, 0, width, height);
 
     // Set up VertexArray and VertexBuffer for drawing textures.
-    window.texture_array = try Array.init(gpa);
-    window.texture_buffer = try window.texture_array.buffer();
-    window.texture_buffer.set(&.{
+    window.texture_array = Array.init(.{ .data = &.{
         -1.0, 1.0,  0.0, 0.0,
         -1.0, -1.0, 0.0, 1.0,
         1.0,  -1.0, 1.0, 1.0,
         -1.0, 1.0,  0.0, 0.0,
         1.0,  -1.0, 1.0, 1.0,
         1.0,  1.0,  1.0, 0.0,
-    }, .StaticDraw);
-    window.texture_buffer.attrib_ptr(0, 2, 4 * @sizeOf(f32), 0);
-    window.texture_buffer.attrib_ptr(1, 2, 4 * @sizeOf(f32), 2 * @sizeOf(f32));
-    Buffer.unbind();
+    } }, null);
+
+    window.texture_array.bind();
+    window.texture_array.vbo.attrib_ptr(0, 2, 4 * @sizeOf(f32), 0);
+    window.texture_array.vbo.attrib_ptr(1, 2, 4 * @sizeOf(f32), 2 * @sizeOf(f32));
+    window.texture_array.unbind();
 
     var tvp = try shader.Shader.init(.Vertex, std.mem.span(@as([*c]const u8, @ptrCast(TEXTURE_VERTEX_SOURCE))));
     defer tvp.deinit();
@@ -137,7 +135,8 @@ pub fn SwapBuffers(window: *Window) void {
 // FIXME: Expand to take src/dest rectangles.
 pub fn DrawTexture(window: Window, texture: Texture, src: Rect, dest: Rect) void {
     window.texture_program.use();
-    window.texture_buffer.bind();
+    window.texture_array.bind();
+    defer window.texture_array.unbind();
     texture.set_active();
     texture.bind();
 
@@ -152,8 +151,6 @@ pub fn DrawTexture(window: Window, texture: Texture, src: Rect, dest: Rect) void
     // gl.Uniform4f(
     //     gl.GetUniformLocation(window.texture_program.pid, "dTransform"),
     // );
-
-    window.texture_array.bind();
 
     gl.DrawArrays(glfw.GL_TRIANGLES, 0, 6);
 }
