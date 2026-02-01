@@ -134,6 +134,30 @@ pub fn SwapBuffers(window: *Window) void {
 
 // FIXME: Expand to take src/dest rectangles.
 pub fn DrawTexture(window: Window, texture: Texture, src: Rect, dest: Rect) void {
+    const srcw: f32 = @floatFromInt(texture.width);
+    const srch: f32 = @floatFromInt(texture.height);
+    var nsrc: Rect = .{
+        .x = src.x / srcw,
+        .y = src.y / srch,
+        .w = src.w / srcw,
+        .h = src.h / srch,
+    };
+
+    const dstw: f32 = @floatFromInt(window.width);
+    const dsth: f32 = @floatFromInt(window.height);
+    const ndst: Rect = .{
+        .x = (dest.x / dstw) * 2 - 1,
+        .y = -(dest.y / dsth) * 2 + 1,
+        .w = (dest.w / dstw) * 2 - 1,
+        .h = -(dest.h / dsth) * 2 + 1,
+    };
+    window.texture_array.vbo.update(&.{
+        ndst.x, ndst.h, nsrc.x, nsrc.h, // Top left
+        ndst.x, ndst.y, nsrc.x, nsrc.y, // Bottom Left
+        ndst.w, ndst.h, nsrc.w, nsrc.h, // Top Right
+        ndst.w, ndst.y, nsrc.w, nsrc.y, // Bottom Right
+    });
+
     window.texture_program.use();
     window.texture_array.bind();
     defer window.texture_array.unbind();
@@ -141,16 +165,7 @@ pub fn DrawTexture(window: Window, texture: Texture, src: Rect, dest: Rect) void
     texture.bind();
 
     // TODO: Move into program?
-    gl.Uniform1i(gl.GetUniformLocation(window.texture_program.pid, "uTexture"), @intCast(texture.tunit - Texture.InitialTexture));
-
-    // TODO: Decide if the buffer needs to be altered or if I can pass transforms to accomplish this.
-    _ = .{ src, dest };
-    // gl.Uniform4f(
-    //     gl.GetUniformLocation(window.texture_program.pid, "sTransform"),
-    // );
-    // gl.Uniform4f(
-    //     gl.GetUniformLocation(window.texture_program.pid, "dTransform"),
-    // );
+    gl.Uniform1i(gl.GetUniformLocation(window.texture_program.pid, "uTexture"), @intCast(texture.index()));
 
     gl.DrawArrays(glfw.GL_TRIANGLE_STRIP, 0, 4);
 }

@@ -7,7 +7,7 @@ const Window = ui.Window;
 const Texture = ui.Texture;
 const Event = ui.Event;
 
-const background: ui.Color = .{ .r = 0xFF, .g = 0x3F, .b = 0x3F, .a = 0xFF };
+const background: ui.Color = .{ .r = 0x18, .g = 0x18, .b = 0x18, .a = 0xFF };
 
 const State = struct {
     gpa: Allocator,
@@ -21,14 +21,6 @@ const State = struct {
         });
         defer state.w.deinit();
 
-        // Text texure data
-        // const tdata: []const u8 = &.{
-        //     0,   255, 0,   255,
-        //     255, 0,   0,   255,
-        //     0,   0,   255, 255,
-        //     255, 255, 255, 255,
-        // };
-        // var texture = Texture.init(2, 2, tdata);
         try state.UpdateTexture("tm.png");
         defer state.texture.?.deinit();
 
@@ -51,8 +43,8 @@ const State = struct {
             if (state.texture) |texture| {
                 state.w.DrawTexture(
                     texture,
-                    .{ .x = 0, .y = 0, .w = @floatFromInt(texture.width), .h = @floatFromInt(texture.height) },
-                    .{ .x = 0, .y = 0, .w = @floatFromInt(state.w.width), .h = @floatFromInt(state.w.height) },
+                    .{ .x = 0, .y = 0, .w = @floatFromInt(texture.width / 2), .h = @floatFromInt(texture.height / 2) },
+                    .{ .x = 0, .y = 0, .w = @floatFromInt(state.w.width / 2), .h = @floatFromInt(state.w.height / 2) },
                 );
             }
 

@@ -88,6 +88,13 @@ pub const VertexBuffer = struct {
         gl.DeleteBuffers(1, @ptrCast(&vbo.vbo));
     }
 
+    pub fn update(vbo: VertexBuffer, data: []const f32) void {
+        vbo.bind();
+        gl.BindBuffer(glfw.GL_ARRAY_BUFFER, vbo.vbo);
+        gl.BufferSubData(glfw.GL_ARRAY_BUFFER, 0, @intCast(@sizeOf(f32) * data.len), data.ptr);
+        vbo.unbind();
+    }
+
     pub fn bind(vbo: VertexBuffer) void {
         gl.BindBuffer(glfw.GL_ARRAY_BUFFER, vbo.vbo);
     }

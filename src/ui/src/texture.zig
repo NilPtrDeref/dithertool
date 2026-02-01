@@ -43,6 +43,10 @@ pub fn deinit(texture: Texture) void {
     gl.DeleteTextures(1, @ptrCast(&texture.tid));
 }
 
+pub fn index(texture: Texture) u32 {
+    return texture.tunit - InitialTexture;
+}
+
 pub fn set_active(texture: Texture) void {
     gl.ActiveTexture(texture.tunit);
 }
