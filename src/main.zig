@@ -41,16 +41,22 @@ const State = struct {
             }
 
             if (state.texture) |texture| {
-                const maxw = @min(state.w.width, texture.width);
-                const maxh = @min(state.w.height, texture.height);
-                const hspacing = (state.w.width - maxw) / 2;
-                const vspacing = (state.w.height - maxh) / 2;
+                const tw: f32 = @floatFromInt(texture.width);
+                const th: f32 = @floatFromInt(texture.height);
+                const ww: f32 = @floatFromInt(state.w.width);
+                const wh: f32 = @floatFromInt(state.w.height);
+                const maxw = @min(ww, tw);
+                const maxh = @min(wh, th);
+                const hspacing = (ww - maxw) / 2;
+                const vspacing = (wh - maxh) / 2;
+                const hmod = if (tw >= ww and tw < th) ((tw / th) * ww) else 0;
+                const vmod = if (th >= wh and th < tw) ((th / tw) * wh) else 0;
 
                 state.w.DrawTexture2D(texture, null, .{
-                    .x = @floatFromInt(hspacing),
-                    .y = @floatFromInt(vspacing),
-                    .w = @floatFromInt(state.w.width - hspacing),
-                    .h = @floatFromInt(state.w.height - vspacing),
+                    .x = hspacing + hmod,
+                    .y = vspacing + vmod,
+                    .w = ww - hspacing - hmod,
+                    .h = wh - vspacing - vmod,
                 });
             }
 
