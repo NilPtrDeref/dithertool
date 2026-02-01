@@ -41,7 +41,7 @@ const State = struct {
             }
 
             if (state.texture) |texture| {
-                state.w.DrawTexture(texture, null, .{
+                state.w.DrawTexture2D(texture, null, .{
                     .x = 0,
                     .y = 0,
                     .w = @floatFromInt(texture.width),

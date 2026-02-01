@@ -132,7 +132,7 @@ pub fn SwapBuffers(window: *Window) void {
     glfw.glfwPollEvents();
 }
 
-pub fn DrawTexture(window: Window, texture: Texture, src: ?Rect, dest: Rect) void {
+pub fn DrawTexture2D(window: Window, texture: Texture, src: ?Rect, dest: Rect) void {
     var nsrc: Rect = if (src) |s| cond: {
         const srcw: f32 = @floatFromInt(texture.width);
         const srch: f32 = @floatFromInt(texture.height);
@@ -171,7 +171,7 @@ pub fn DrawTexture(window: Window, texture: Texture, src: ?Rect, dest: Rect) voi
     texture.bind();
 
     // TODO: Move into program?
-    gl.Uniform1i(gl.GetUniformLocation(window.texture_program.pid, "uTexture"), @intCast(texture.index()));
+    gl.Uniform1i(gl.GetUniformLocation(window.texture_program.pid, "Texture"), @intCast(texture.index()));
 
     gl.DrawArrays(glfw.GL_TRIANGLE_STRIP, 0, 4);
 }
