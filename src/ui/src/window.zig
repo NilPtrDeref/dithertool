@@ -80,14 +80,14 @@ pub fn init(gpa: Allocator, width: comptime_int, height: comptime_int, title: [:
     gl.Viewport(0, 0, width, height);
 
     // Set up VertexArray and VertexBuffer for drawing textures.
-    window.texture_array = Array.init(.{ .data = &.{
-        -1.0, 1.0,  0.0, 0.0,
-        -1.0, -1.0, 0.0, 1.0,
-        1.0,  -1.0, 1.0, 1.0,
-        -1.0, 1.0,  0.0, 0.0,
-        1.0,  -1.0, 1.0, 1.0,
-        1.0,  1.0,  1.0, 0.0,
-    } }, null);
+    window.texture_array = Array.init(.{
+        .data = &.{
+            -1.0, -1.0, 0.0, 1.0,
+            -1.0, 1.0,  0.0, 0.0,
+            1.0,  -1.0, 1.0, 1.0,
+            1.0,  1.0,  1.0, 0.0,
+        },
+    }, null);
 
     window.texture_array.bind();
     window.texture_array.vbo.attrib_ptr(0, 2, 4 * @sizeOf(f32), 0);
@@ -152,7 +152,7 @@ pub fn DrawTexture(window: Window, texture: Texture, src: Rect, dest: Rect) void
     //     gl.GetUniformLocation(window.texture_program.pid, "dTransform"),
     // );
 
-    gl.DrawArrays(glfw.GL_TRIANGLES, 0, 6);
+    gl.DrawArrays(glfw.GL_TRIANGLE_STRIP, 0, 4);
 }
 
 pub fn SetErrorCallback(_: *Window, function: ?ErrorFun) void {
