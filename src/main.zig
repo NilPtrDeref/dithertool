@@ -44,8 +44,8 @@ const State = struct {
                 state.w.DrawTexture(texture, null, .{
                     .x = 0,
                     .y = 0,
-                    .w = @floatFromInt(state.w.width / 2),
-                    .h = @floatFromInt(state.w.height / 2),
+                    .w = @floatFromInt(texture.width),
+                    .h = @floatFromInt(texture.height),
                 });
             }
 
