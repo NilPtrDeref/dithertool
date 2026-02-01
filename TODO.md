@@ -3,23 +3,6 @@
 - [x] Create standard image memory format
   - [x] Indexable
 
-- [ ] Input Formats
-  - [ ] Image
-    - [x] PNG
-      - [x] Read critical chunk types
-      - [x] Interpret data to get pixel information
-
-    - [ ] Jpg/Jpeg
-
-    - [ ] Webp
-
-    - [ ] PPM
-
-- [ ] Output Formats
-  - [ ] Image
-    - [ ] PNG
-    - [ ] PPM
-
 - [ ] Editting
   - [ ] Pixel Sort
   - [ ] Dithering
@@ -31,6 +14,8 @@
   - [x] Basic Texture Rendering
   - [x] Load image
   - [x] Present image
+  - [ ] Scroll to zoom
+  - [ ] Drag to move image
   - [ ] Menu
   - [ ] Live dither image
 
