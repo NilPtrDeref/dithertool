@@ -41,11 +41,12 @@ const State = struct {
             }
 
             if (state.texture) |texture| {
-                state.w.DrawTexture(
-                    texture,
-                    .{ .x = 0, .y = 0, .w = @floatFromInt(texture.width / 2), .h = @floatFromInt(texture.height / 2) },
-                    .{ .x = 0, .y = 0, .w = @floatFromInt(state.w.width / 2), .h = @floatFromInt(state.w.height / 2) },
-                );
+                state.w.DrawTexture(texture, null, .{
+                    .x = 0,
+                    .y = 0,
+                    .w = @floatFromInt(state.w.width / 2),
+                    .h = @floatFromInt(state.w.height / 2),
+                });
             }
 
             state.w.SwapBuffers();

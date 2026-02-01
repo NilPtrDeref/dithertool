@@ -132,15 +132,21 @@ pub fn SwapBuffers(window: *Window) void {
     glfw.glfwPollEvents();
 }
 
-// FIXME: Expand to take src/dest rectangles.
-pub fn DrawTexture(window: Window, texture: Texture, src: Rect, dest: Rect) void {
-    const srcw: f32 = @floatFromInt(texture.width);
-    const srch: f32 = @floatFromInt(texture.height);
-    var nsrc: Rect = .{
-        .x = src.x / srcw,
-        .y = src.y / srch,
-        .w = src.w / srcw,
-        .h = src.h / srch,
+pub fn DrawTexture(window: Window, texture: Texture, src: ?Rect, dest: Rect) void {
+    var nsrc: Rect = if (src) |s| cond: {
+        const srcw: f32 = @floatFromInt(texture.width);
+        const srch: f32 = @floatFromInt(texture.height);
+        break :cond .{
+            .x = s.x / srcw,
+            .y = s.y / srch,
+            .w = s.w / srcw,
+            .h = s.h / srch,
+        };
+    } else .{
+        .x = 0,
+        .y = 0,
+        .w = 1,
+        .h = 1,
     };
 
     const dstw: f32 = @floatFromInt(window.width);
