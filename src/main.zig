@@ -45,18 +45,15 @@ const State = struct {
                 const th: f32 = @floatFromInt(texture.height);
                 const ww: f32 = @floatFromInt(state.w.width);
                 const wh: f32 = @floatFromInt(state.w.height);
-                const maxw = @min(ww, tw);
-                const maxh = @min(wh, th);
-                const hspacing = (ww - maxw) / 2;
-                const vspacing = (wh - maxh) / 2;
-                const hmod = if (tw >= ww and tw < th) ((tw / th) * ww) else 0;
-                const vmod = if (th >= wh and th < tw) ((th / tw) * wh) else 0;
+                const scale = @min(ww / tw, wh / th, 1.0);
+                const aw = tw * scale;
+                const ah = th * scale;
 
                 state.w.DrawTexture2D(texture, null, .{
-                    .x = hspacing + hmod,
-                    .y = vspacing + vmod,
-                    .w = ww - hspacing - hmod,
-                    .h = wh - vspacing - vmod,
+                    .x = (ww - aw) / 2,
+                    .y = (wh - ah) / 2,
+                    .w = ((ww - aw) / 2) + aw,
+                    .h = ((wh - ah) / 2) + ah,
                 });
             }
 
