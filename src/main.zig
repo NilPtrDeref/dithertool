@@ -13,11 +13,12 @@ const State = struct {
     gpa: Allocator,
     w: *Window = undefined,
     texture: ?Texture = undefined,
+    scale: f32 = 1.0,
 
     fn start(state: *State) !void {
         state.w = try Window.init(state.gpa, 800, 640, "Dithertool", .{
             .error_callback = ErrorCallback,
-            .event_capabilities = .{ .Key = true, .Drop = true },
+            .event_capabilities = .{ .Key = true, .Scroll = true, .Drop = true },
         });
         defer state.w.deinit();
 
@@ -32,6 +33,13 @@ const State = struct {
                 switch (e) {
                     .Drop => |drop| {
                         try state.UpdateTexture(drop.paths.items[0]);
+                        state.scale = 1.0;
+                    },
+                    .Scroll => |scroll| {
+                        const delta: f32 = @floatCast(scroll.yoffset * 0.1);
+                        state.scale += delta;
+                        state.scale = @min(state.scale, 5.0);
+                        state.scale = @max(state.scale, 0.1);
                     },
                     .Key => |key| {
                         if (key.key == .Q) return;
@@ -45,7 +53,7 @@ const State = struct {
                 const th: f32 = @floatFromInt(texture.height);
                 const ww: f32 = @floatFromInt(state.w.width);
                 const wh: f32 = @floatFromInt(state.w.height);
-                const scale = @min(ww / tw, wh / th, 1.0);
+                const scale = @min(ww / tw, wh / th, 1.0) * state.scale;
                 const aw = tw * scale;
                 const ah = th * scale;
 
