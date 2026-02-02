@@ -15,6 +15,7 @@
   - [x] Load image
   - [x] Present image
   - [x] Scroll to zoom
+  - [ ] Shapes (Rectangle, rounded rectangle, triangle, circle, polygon?)
   - [ ] Drag to move image
   - [ ] H/L to go to previous/next image in directory?
   - [ ] Menu
