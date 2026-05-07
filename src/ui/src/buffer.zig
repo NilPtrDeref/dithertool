@@ -1,9 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const gl = @import("gl");
-const glfw = @cImport({
-    @cInclude("GLFW/glfw3.h");
-});
+const glfw = @import("glfw");
 
 pub const Usage = enum(u32) {
     StreamDraw = glfw.GL_STREAM_DRAW,

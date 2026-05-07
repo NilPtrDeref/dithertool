@@ -3,6 +3,12 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const stbi = b.addTranslateC(.{
+        .root_source_file = b.path("src/stb/stb_image.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const exe = b.addExecutable(.{
         .name = "dithertool",
         .root_module = b.createModule(.{
@@ -10,6 +16,12 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .link_libc = true,
+            .imports = &.{
+                .{
+                   .name = "stbi",
+                    .module = stbi.createModule(),
+                },
+            }
         }),
         .use_llvm = true,
     });

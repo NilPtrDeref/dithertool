@@ -4,9 +4,7 @@ const ArrayList = std.ArrayList;
 const Deque = std.Deque;
 const Order = std.math.Order;
 const Window = @import("window.zig");
-const glfw = @cImport({
-    @cInclude("GLFW/glfw3.h");
-});
+const glfw = @import("glfw");
 
 pub const MouseButton = enum(c_int) {
     Left = 0,

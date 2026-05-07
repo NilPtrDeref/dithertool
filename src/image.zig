@@ -1,9 +1,7 @@
 const std = @import("std");
+const stbi = @import("stbi");
 const Allocator = std.mem.Allocator;
 const Io = std.Io;
-const stbi = @cImport({
-    @cInclude("stb_image.h");
-});
 
 const Image = @This();
 width: u32 = 0,

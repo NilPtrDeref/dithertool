@@ -5,9 +5,7 @@ const Rect = root.Rect;
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const gl = @import("gl");
-const glfw = @cImport({
-    @cInclude("GLFW/glfw3.h");
-});
+const glfw = @import("glfw");
 const buffer = @import("buffer.zig");
 const Array = buffer.Array;
 const shader = @import("shader.zig");
@@ -133,7 +131,7 @@ pub fn SwapBuffers(window: *Window) void {
 }
 
 pub fn DrawTexture2D(window: Window, texture: Texture, src: ?Rect, dest: Rect) void {
-    var nsrc: Rect = if (src) |s| cond: {
+    const nsrc: Rect = if (src) |s| cond: {
         const srcw: f32 = @floatFromInt(texture.width);
         const srch: f32 = @floatFromInt(texture.height);
         break :cond .{
